@@ -9,9 +9,10 @@
 (() => {
   const SESSION_MINUTES = 30;
   const TIMER_KEY = "study2_session_end_ts";
-  const PARTICIPANT_IDS = Array.from({ length: 30 }, (_, i) =>
-    "P" + String(i + 1).padStart(2, "0")
-  );
+  const PARTICIPANT_IDS = Array.from({ length: 30 }, (_, i) => String(i + 1));
+  // TODO: replace with your real auth check (this is a client-side stand-in
+  // only — for production, verify against Django auth server-side instead).
+  const STUDY_PASSWORD = "gaze2024";
 
   const questions = window.STUDY_QUESTIONS || [];
   const state = {
@@ -94,32 +95,33 @@
   /* ---------------------------------------------------------------- */
 
   function renderLogin() {
-    const options = PARTICIPANT_IDS.map((id) => `<option value="${id}">${id}</option>`).join("");
     root.innerHTML = `
       <div class="card login-card">
         <p class="study-eyebrow">Eye Gaze Study</p>
         <h1 class="study-title">Participant Login</h1>
-        <p class="study-lede">Please select your assigned participant ID and enter the study password to begin.</p>
+        <p class="study-lede">Please enter your assigned participant ID and the study password to begin.</p>
         <div class="field">
-          <label for="participant-select">Participant ID</label>
-          <select id="participant-select">
-            <option value="">Select your ID…</option>
-            ${options}
-          </select>
+          <label for="participant-id">Participant Username / ID</label>
+          <input type="text" id="participant-id" placeholder="e.g. 1" autocomplete="off" />
         </div>
         <div class="field">
           <label for="participant-password">Password</label>
           <input type="password" id="participant-password" placeholder="Enter password" />
-          <div class="field-error" id="login-error">Please select your participant ID and enter the password.</div>
+          <div class="field-error" id="login-error">Please check your participant ID and password and try again.</div>
         </div>
         <button class="btn btn-primary btn-block" id="btn-login">Login &amp; Continue</button>
       </div>
     `;
     document.getElementById("btn-login").addEventListener("click", () => {
-      const id = document.getElementById("participant-select").value;
+      const idRaw = document.getElementById("participant-id").value.trim();
+      const id = idRaw.toUpperCase();
       const pw = document.getElementById("participant-password").value;
       const err = document.getElementById("login-error");
-      if (!id || !pw) {
+
+      const validId = PARTICIPANT_IDS.includes(id);
+      const validPw = pw === STUDY_PASSWORD;
+
+      if (!idRaw || !pw || !validId || !validPw) {
         err.classList.add("visible");
         return;
       }
