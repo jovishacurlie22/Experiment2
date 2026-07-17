@@ -1,0 +1,438 @@
+/* ==========================================================================
+   Study 2 — Healthcare Survey (Eye Gaze Study)
+   Style ported from GazeEstimationApp styles.css / base.html conventions.
+   Token-first: re-skin the whole site by editing :root only.
+   ========================================================================== */
+
+:root {
+  --bg-1: #f3f7ff;      /* base background, pale blue */
+  --bg-2: #e5fff4;      /* background gradient accent, pale mint */
+  --ink: #141926;        /* primary text */
+  --muted: #4d5566;      /* secondary/supporting text */
+  --surface: rgba(255, 255, 255, 0.85);  /* card backgrounds */
+  --accent: #0e7a58;     /* primary action color (deep green) */
+  --accent-2: #167f66;   /* secondary button background */
+  --danger: #b42318;     /* error/validation color */
+  --danger-bg: rgba(179, 38, 30, 0.1); /* expired session timer state */
+  --tick: #f8b500;       /* rating scale accent */
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 15% 20%, var(--bg-2), transparent 30%),
+              radial-gradient(circle at 80% 10%, #dde7ff, transparent 25%),
+              var(--bg-1);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); }
+
+/* ---------------------------------------------------------------------- */
+/* Topbar: brand, session timer, end-study control, progress bar          */
+/* ---------------------------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.5rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-bottom: 1px solid rgba(20, 25, 38, 0.08);
+  backdrop-filter: blur(6px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  letter-spacing: 0.01em;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.session-timer {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 0.35rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(14, 122, 88, 0.1);
+  color: var(--accent);
+  min-width: 4.5rem;
+  text-align: center;
+}
+
+.session-timer.timer-warning {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.btn-end-study {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(180, 35, 24, 0.4);
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-end-study:hover { background: var(--danger-bg); }
+
+.progress-wrap {
+  padding: 0.6rem 1.5rem 0;
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(20, 25, 38, 0.08);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.progress-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.3rem;
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Layout shell                                                           */
+/* ---------------------------------------------------------------------- */
+
+.container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Card                                                                   */
+/* ---------------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid rgba(20, 25, 38, 0.08);
+  border-radius: 14px;
+  padding: 1.1rem;
+  box-shadow: 0 8px 22px rgba(14, 22, 42, 0.08);
+}
+
+.login-card, .instructions-card, .question-card, .rating-card, .end-card {
+  width: 100%;
+  max-width: 640px;
+  padding: 2rem clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.study-eyebrow {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.4rem;
+}
+
+h1.study-title {
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  font-weight: 800;
+  margin: 0 0 0.6rem;
+}
+
+.study-lede {
+  color: var(--muted);
+  font-size: clamp(0.95rem, 1.3vw, 1.05rem);
+  line-height: 1.5;
+  margin: 0 0 1.4rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Forms                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.field {
+  margin-bottom: 1.1rem;
+}
+
+.field label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.field input[type="text"],
+.field input[type="password"],
+.field select {
+  width: 100%;
+  padding: 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(20, 25, 38, 0.25);
+  font-size: 1rem;
+  background: #fff;
+  font-family: inherit;
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.82rem;
+  margin-top: 0.3rem;
+  display: none;
+}
+
+.field-error.visible { display: block; }
+
+/* ---------------------------------------------------------------------- */
+/* Buttons                                                                */
+/* ---------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 10px;
+  padding: 0.7rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:disabled {
+  background: rgba(14, 122, 88, 0.35);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--accent-2);
+  color: #fff;
+  border: 1px solid rgba(22, 127, 102, 0.5);
+}
+
+.btn-block { width: 100%; }
+
+.btn-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Choice cards — hidden radio input + styled sibling label               */
+/* ---------------------------------------------------------------------- */
+
+.question-stem {
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0 0 1.4rem;
+}
+
+.question-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: -0.6rem 0 1rem;
+}
+
+.choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.choice-list.choice-list-binary {
+  flex-direction: row;
+  gap: 0.9rem;
+}
+
+.choice-option input[type="radio"] {
+  display: none;
+}
+
+.choice-option .option-text {
+  display: block;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 1.5px solid rgba(20, 25, 38, 0.15);
+  background: #fff;
+  font-size: 0.98rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.choice-list-binary .choice-option {
+  flex: 1;
+}
+
+.choice-list-binary .option-text {
+  text-align: center;
+  font-weight: 700;
+}
+
+.choice-option input[type="radio"]:checked + .option-text {
+  border-color: var(--accent);
+  background: rgba(14, 122, 88, 0.08);
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Paas mental effort rating — styled range slider + tick labels          */
+/* ---------------------------------------------------------------------- */
+
+.paas-scale {
+  margin: 1.6rem 0 0.5rem;
+}
+
+.paas-endpoints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+}
+
+.effort-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(20, 25, 38, 0.12);
+  outline: none;
+}
+
+.effort-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--tick);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(14, 22, 42, 0.3);
+  cursor: pointer;
+}
+
+.effort-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--tick);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(14, 22, 42, 0.3);
+  cursor: pointer;
+}
+
+.effort-tick-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.effort-value {
+  text-align: center;
+  font-weight: 800;
+  color: var(--accent);
+  font-size: 1.1rem;
+  margin-top: 0.9rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* End / completion screens                                               */
+/* ---------------------------------------------------------------------- */
+
+.end-card { text-align: center; }
+
+.end-icon {
+  font-size: 2.6rem;
+  margin-bottom: 0.6rem;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Modal (end-study confirmation)                                         */
+/* ---------------------------------------------------------------------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 22, 42, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1.25rem;
+}
+
+.modal-backdrop.visible { display: flex; }
+
+.modal-card {
+  max-width: 420px;
+  width: 100%;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1.3rem;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(20, 25, 38, 0.2);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Responsive: single breakpoint at 900px                                 */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .topbar { flex-wrap: wrap; }
+  .choice-list-binary { flex-direction: column; }
+  h1.study-title { font-size: 1.4rem; }
+  .question-stem { font-size: 1.1rem; }
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Healthcare Survey — Eye Gaze Study</title>
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <!--
+    RealEye SDK — loaded once, globally, as a module script, same as
+    Experiment 1. Screen-recording mode is enabled for this study.
+    Replace debugMode / stimulusId / forceRun with real values from
+    your Django context before deploying.
+  -->
+  <script type="module">
+    try {
+      const { default: EmbeddedPageSdk } = await import(
+        "https://app.realeye.io/sdk/js/testRunnerEmbeddableSdk-latest.js"
+      );
+      const debugMode = true; // TODO: set from server context
+      const stimulusId = "REPLACE_WITH_STIMULUS_ID"; // TODO
+      const forceRun = "screenRecording"; // screen-recording mode for this study
+      window.reSdk = new EmbeddedPageSdk(debugMode, stimulusId, forceRun);
+      window.RealEye = window.reSdk;
+    } catch (e) {
+      // Expected in this static preview (no network / not embedded in RealEye).
+      console.log("[RealEye SDK] not loaded in preview:", e.message);
+    }
+  </script>
+</head>
+<body data-record-webcam="true" data-reset-capture-session="false">
+
+  <header class="topbar" id="topbar">
+    <div class="brand">Eye Gaze Study — Healthcare Survey</div>
+    <div class="topbar-right">
+      <div class="session-timer" id="session-timer">30:00</div>
+      <button class="btn-end-study" id="btn-end-study">End Study</button>
+    </div>
+  </header>
+
+  <div class="progress-wrap" id="progress-wrap" style="display:none;"></div>
+
+  <main class="container">
+    <div id="app-root"></div>
+  </main>
+
+  <!-- End-study confirmation modal -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="card modal-card">
+      <h1 class="study-title" style="font-size:1.2rem;">End the study now?</h1>
+      <p class="study-lede" style="margin-bottom:0;">
+        This will immediately stop the recording and close your session. This can't be undone.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+        <button class="btn btn-danger" id="modal-confirm-end">End Study</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/questions.js"></script>
+  <script src="js/capture_session.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
