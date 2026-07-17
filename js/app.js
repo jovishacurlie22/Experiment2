@@ -43,8 +43,13 @@
     }
   }
 
-  function tickTimer() {
-    const end = Number(sessionStorage.getItem(TIMER_KEY) || 0);
+function tickTimer() {
+    const raw = sessionStorage.getItem(TIMER_KEY);
+    if (!raw) {
+      // Timer hasn't started yet (still on login) — leave the static 30:00 as-is.
+      return;
+    }
+    const end = Number(raw);
     const remainingMs = end - Date.now();
     if (remainingMs <= 0) {
       timerEl.textContent = "00:00";
