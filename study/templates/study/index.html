@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Healthcare Survey — Eye Gaze Study</title>
+  <link rel="stylesheet" href="{% static 'study/css/styles.css' %}" />
+
+  <!-- ensure_csrf_cookie on the index view (study/views.py) guarantees the
+       csrftoken cookie is set on page load, before any JS POST needs it. -->
+
+
+  <!-- Participant IDs accepted at login (mirrors settings.STUDY_PARTICIPANT_COUNT),
+       used only for instant client-side "unknown ID" feedback — the real
+       check happens server-side in study/views.py:login_view. -->
+  <script>
+    window.STUDY_PARTICIPANT_IDS = {{ participant_ids|safe }};
+  </script>
+</head>
+<body data-record-webcam="true" data-reset-capture-session="false" data-capture-test-mode="false">
+
+  <header class="topbar" id="topbar">
+    <div class="brand">Eye Gaze Study — Healthcare Survey</div>
+    <div class="topbar-right">
+      <div class="session-timer" id="session-timer">30:00</div>
+      <button class="btn-end-study" id="btn-end-study">End Study</button>
+    </div>
+  </header>
+
+  <div class="progress-wrap" id="progress-wrap" style="display:none;"></div>
+
+  <main class="container">
+    <div id="app-root"></div>
+  </main>
+
+  <!-- End-study confirmation modal -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="card modal-card">
+      <h1 class="study-title" style="font-size:1.2rem;">End the study now?</h1>
+      <p class="study-lede" style="margin-bottom:0;">
+        This will immediately stop the recording and close your session. This can't be undone.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+        <button class="btn btn-danger" id="modal-confirm-end">End Study</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'study/js/study_schema.js' %}"></script>
+  <script src="{% static 'study/js/study_config.js' %}"></script>
+  <script src="{% static 'study/js/study_engine.js' %}"></script>
+  <script src="{% static 'study/js/api_client.js' %}"></script>
+  <script src="{% static 'study/js/mp4box.all.min.js' %}"></script>
+  <script src="{% static 'study/js/capture_session.js' %}"></script>
+  <script src="{% static 'study/js/app.js' %}"></script>
+</body>
+</html>
