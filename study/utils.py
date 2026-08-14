@@ -1,65 +1,57 @@
-"""Helpers for assembling the final per-stream recording out of the WebM
-chunks uploaded during a session.
+import os
+import subprocess
+import logging
 
-Each chunk produced by capture_session.js is a MediaRecorder Blob for a
-CHUNK_TIMESLICE_MS window of that stream. Simple concatenation of
-MediaRecorder's sequential Blobs in order reproduces a valid, playable WebM
-file (this is the standard "streaming MediaRecorder to disk" technique), so
-no transcoding/ffmpeg dependency is required here — this just streams the
-chunk files together in `sequence` order into one file.
-
-Frame-level timestamps for downstream analysis are extracted from the
-finalized .webm afterward via ffprobe (pts_time per frame) rather than
-tracked during upload — see frame_align.py from Experiment 1 for the same
-technique.
-"""
-
-from django.core.files.base import ContentFile
-from django.utils import timezone
-
-from .models import Recording, RecordingChunk
+logger = logging.getLogger(__name__)
 
 
-def finalize_recording(session, stream_source):
-    """Concatenate all uploaded chunks for (session, stream_source) into a
-    single Recording.file, in ascending sequence order. Safe to call more
-    than once (e.g. if the "is_last" chunk race-condition means it's
-    called from both the last chunk upload and session finish) — it just
-    re-does the concatenation from whatever chunks exist so far.
-
-    Returns the Recording instance, or None if no chunks exist yet.
+def finalize_recording(chunk_paths: list[str], output_path: str) -> str:
     """
-    chunks = list(
-        RecordingChunk.objects.filter(session=session, stream_source=stream_source).order_by(
-            "sequence"
+    Concatenate sequential .webm chunks into a single file, then remux
+    through ffmpeg to fix Duration/Cues metadata (Chrome's MediaRecorder
+    doesn't know total duration up front, so raw concatenation leaves
+    Segment > Info > Duration unset/Infinity and no seek table).
+    """
+    raw_concat_path = output_path + ".raw.webm"
+
+    # Step 1: sequential byte concatenation (unchanged from before)
+    with open(raw_concat_path, "wb") as outfile:
+        for chunk_path in chunk_paths:
+            with open(chunk_path, "rb") as infile:
+                outfile.write(infile.read())
+
+    # Step 2: remux through ffmpeg to recalculate Duration/Cues from
+    # actual cluster timestamps
+    try:
+        subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", raw_concat_path,
+                "-c", "copy",
+                "-fflags", "+genpts",
+                "-avoid_negative_ts", "make_zero",
+                output_path,
+            ],
+            check=True,
+            capture_output=True,
+            timeout=120,
         )
-    )
-    if not chunks:
-        return None
+    except subprocess.CalledProcessError as e:
+        logger.error(
+            "ffmpeg remux failed for %s: %s",
+            raw_concat_path,
+            e.stderr.decode(errors="replace"),
+        )
+        # Fall back to the raw concat so we don't lose the recording
+        # entirely, even though duration/seek will be broken.
+        os.replace(raw_concat_path, output_path)
+        return output_path
+    except subprocess.TimeoutExpired:
+        logger.error("ffmpeg remux timed out for %s", raw_concat_path)
+        os.replace(raw_concat_path, output_path)
+        return output_path
 
-    recording, _ = Recording.objects.get_or_create(session=session, stream_source=stream_source)
-    if recording.started_at is None:
-        recording.started_at = chunks[0].uploaded_at
+    # Step 3: clean up the intermediate raw concat file
+    os.remove(raw_concat_path)
 
-    buf = bytearray()
-    for chunk in chunks:
-        chunk.file.open("rb")
-        try:
-            buf.extend(chunk.file.read())
-        finally:
-            chunk.file.close()
-
-    filename = f"{stream_source}.webm"
-    recording.file.save(filename, ContentFile(bytes(buf)), save=False)
-    recording.chunk_count = len(chunks)
-    recording.finalized_at = timezone.now()
-    recording.save()
-    return recording
-
-
-def finalize_all_recordings(session):
-    """Finalize both streams for a session (called when the session ends)."""
-    results = {}
-    for stream_source, _ in RecordingChunk.STREAM_CHOICES:
-        results[stream_source] = finalize_recording(session, stream_source)
-    return results
+    return output_path

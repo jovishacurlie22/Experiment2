@@ -1,41 +1,8 @@
 /* ==========================================================================
    capture_session.js (MediaRecorder implementation)
-   ----------------------------------------------------------------------
-   Captures Webcam and Screen Recording in parallel using the native
-   MediaRecorder API. Each stream records to its own MediaRecorder instance,
-   emitting a Blob chunk every CHUNK_TIMESLICE_MS via ondataavailable, which
-   is streamed to the Django backend on independent, per-stream upload
-   queues (mirrors the original chunk-upload contract: video_chunk,
-   stream_source, sequence, is_last, session_key).
-
-   Why MediaRecorder instead of hand-rolled WebCodecs + MP4Box: that
-   pipeline hit a reproducible issue where the encoder never emitted a
-   keyframe (chunk.type stayed 'delta' even when a keyframe was explicitly
-   requested), so MP4Box's segmentation never initialized and no chunk was
-   ever produced. MediaRecorder sidesteps the keyframe/muxing layer
-   entirely — the browser handles container framing internally.
-
-   Frame-accurate timing is recovered *after* the fact instead of live:
-   each recorded file is a real, valid (variable-frame-rate) video with
-   accurate per-frame timestamps baked into its container, extracted
-   afterward via ffprobe's pts_time (same technique already used for
-   Experiment 1 in frame_align.py) rather than guaranteeing it frame-by-
-   frame inside the browser.
-
-   TEST MODE
-   ----------------------------------------------------------------------
-   Set `document.body.dataset.captureTestMode = "true"` (or the
-   `data-capture-test-mode="true"` attribute in index.html) to turn this on.
-   With it enabled, chunks are buffered locally instead of uploaded, and on
-   stop() each stream is assembled into a downloadable file plus a console
-   summary so you can play back and verify without the Django endpoint
-   running. Production behavior (network upload) is unchanged either way.
    ========================================================================== */
 
 const CaptureSession = (() => {
-  // Set once per session by app.js right before calling start(), via
-  // CaptureSession.start(sessionKey). Included on every uploaded chunk so
-  // the Django backend can attribute it to the right StudySession.
   let currentSessionKey = null;
 
   let webcamStream = null;
@@ -47,14 +14,35 @@ const CaptureSession = (() => {
   let recording = false;
   let chunkSequence = { webcam: 0, screen: 0 };
 
-  // Separate serialized upload chains per stream so a slow/backed-up screen
-  // upload can't stall webcam chunk delivery, and vice versa.
   let webcamUploadQueue = Promise.resolve();
   let screenUploadQueue = Promise.resolve();
 
-  // How often MediaRecorder hands us a Blob. Smaller = more frequent
-  // uploads (less data at risk if the tab crashes) but more HTTP overhead.
   const CHUNK_TIMESLICE_MS = 2000;
+
+  /* ---------------------------------------------------------------- */
+  /* Activity/epoch logging                                            */
+  /* ---------------------------------------------------------------- */
+
+  // Single choke point for all timestamped events. epoch_ms is captured
+  // with Date.now() at the exact call site (not inside StudyAPI, to avoid
+  // any queueing/network delay skewing the timestamp), then sent via
+  // sendBeacon so it survives page unload during module transitions.
+  function logActivityEvent(eventType, streamSource = null, meta = {}) {
+    const epochMs = Date.now();
+    const payload = {
+      session_key: currentSessionKey || '',
+      event_type: eventType,
+      epoch_ms: epochMs,
+      stream_source: streamSource,
+      meta: meta,
+    };
+    console.log(`[capture_session] ${eventType}${streamSource ? ' (' + streamSource + ')' : ''} @ ${epochMs}`);
+    navigator.sendBeacon(
+      '/log-activity-event/',
+      new Blob([JSON.stringify(payload)], { type: 'application/json' })
+    );
+    return epochMs;
+  }
 
   /* ---------------------------------------------------------------- */
   /* Test-mode state — local buffering                                  */
@@ -64,8 +52,6 @@ const CaptureSession = (() => {
     return document.body.dataset.captureTestMode === "true";
   }
 
-  // Independent per-stream buffers — webcam and screen never share an
-  // array, so segments can never end up interleaved into the wrong file.
   let localBuffers = { webcam: [], screen: [] };
   let localChunkCounts = { webcam: 0, screen: 0 };
 
@@ -85,9 +71,6 @@ const CaptureSession = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
 
-  // Assembles each stream's buffered chunks into one .webm blob, triggers
-  // a download for both, and prints a summary. Safe to call even if
-  // one/both streams captured zero chunks.
   function finalizeTestModeOutput() {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 
@@ -137,10 +120,14 @@ const CaptureSession = (() => {
 
     const formData = new FormData();
     formData.append('video_chunk', blob, `${trackType}-${chunkSequence[trackType]}.webm`);
-    formData.append('stream_source', trackType); // 'webcam' or 'screen'
+    formData.append('stream_source', trackType);
     formData.append('sequence', chunkSequence[trackType]);
     formData.append('is_last', isLast ? 'true' : 'false');
     formData.append('session_key', currentSessionKey || '');
+    // epoch_ms of when THIS CHUNK was handed to us — lets you reconstruct
+    // approximate per-chunk wall-clock coverage independent of the
+    // recording_start anchor, as a cross-check.
+    formData.append('chunk_epoch_ms', Date.now());
 
     const targetQueue = trackType === 'webcam' ? webcamUploadQueue : screenUploadQueue;
     const updated = queueUpload(targetQueue, formData, trackType);
@@ -162,12 +149,9 @@ const CaptureSession = (() => {
         return type;
       }
     }
-    return ''; // let the browser pick a default
+    return '';
   }
 
-  /**
-   * Main setup logic to kick off both capture instances simultaneously
-   */
   async function startWebcamRecording(sessionKey) {
     const body = document.body;
     const shouldRecord = body.dataset.recordWebcam === 'true';
@@ -190,13 +174,13 @@ const CaptureSession = (() => {
         video: { width: 1280, height: 720, frameRate: { ideal: 30 } },
         audio: false
       });
-      StudyAPI.logEvent(currentSessionKey, 'webcam_recording_started');
+      // NOTE: getUserMedia resolving is device-permission time, not
+      // recording start — no log here anymore. See onstart below.
 
       screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: { width: 1920, height: 1080, frameRate: { ideal: 60 } },
         audio: false
       });
-      StudyAPI.logEvent(currentSessionKey, 'screen_recording_started');
 
       recording = true;
       chunkSequence = { webcam: 0, screen: 0 };
@@ -215,6 +199,10 @@ const CaptureSession = (() => {
       );
       webcamRecorder.ondataavailable = (e) => handleChunk('webcam', e.data, false);
       webcamRecorder.onerror = (e) => console.error('[capture_session] Webcam MediaRecorder error:', e);
+      // onstart fires the instant the recorder actually begins producing
+      // data — this is the true anchor for offset_webcam_ms math, not the
+      // moment .start() was called (there can be a few ms of setup lag).
+      webcamRecorder.onstart = () => logActivityEvent('recording_start', 'webcam');
       webcamRecorder.start(CHUNK_TIMESLICE_MS);
 
       screenRecorder = new MediaRecorder(
@@ -223,6 +211,7 @@ const CaptureSession = (() => {
       );
       screenRecorder.ondataavailable = (e) => handleChunk('screen', e.data, false);
       screenRecorder.onerror = (e) => console.error('[capture_session] Screen MediaRecorder error:', e);
+      screenRecorder.onstart = () => logActivityEvent('recording_start', 'screen');
       screenRecorder.start(CHUNK_TIMESLICE_MS);
 
       console.log('[capture_session] Dual recording engine online (MediaRecorder, mimeType: ' + (mimeType || 'browser default') + ').');
@@ -232,10 +221,6 @@ const CaptureSession = (() => {
     }
   }
 
-  /**
-   * Gracefully stop both recorders, flush their final chunk, and drain
-   * upload queues before resolving.
-   */
   async function stopWebcamRecording() {
     recording = false;
     console.log('[capture_session] Initiating session shutdown sequence...');
@@ -270,19 +255,17 @@ const CaptureSession = (() => {
     if (webcamStream) {
       webcamStream.getTracks().forEach((t) => t.stop());
       webcamStream = null;
-      StudyAPI.logEvent(currentSessionKey, 'webcam_recording_stopped');
+      logActivityEvent('recording_stop', 'webcam');
     }
     if (screenStream) {
       screenStream.getTracks().forEach((t) => t.stop());
       screenStream = null;
-      StudyAPI.logEvent(currentSessionKey, 'screen_recording_stopped');
+      logActivityEvent('recording_stop', 'screen');
     }
 
     webcamRecorder = null;
     screenRecorder = null;
 
-    // Make sure any in-flight uploads for both streams settle before we
-    // consider the session fully closed.
     await Promise.all([webcamUploadQueue, screenUploadQueue]);
 
     if (testModeEnabled()) {
@@ -295,8 +278,6 @@ const CaptureSession = (() => {
   function initRealEye() {
     if (window.RealEye) {
       console.log('[capture_session] RealEye SDK detected. Wiring trigger loops.');
-      // Bind to RealEye life cycle calls if required by your pipeline architecture
-      // window.RealEye.start();
     } else {
       console.log('[capture_session] RealEye SDK not detected on this page.');
     }
@@ -305,6 +286,7 @@ const CaptureSession = (() => {
   return {
     start: startWebcamRecording,
     stop: stopWebcamRecording,
-    initRealEye
+    initRealEye,
+    logEvent: logActivityEvent, // exposed so app.js can log module_start/module_end, login_complete, etc.
   };
 })();

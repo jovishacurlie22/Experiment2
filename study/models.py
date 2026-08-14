@@ -89,53 +89,39 @@ class QuestionResponse(models.Model):
         return f"{self.session.participant.participant_code} · {self.question_id} = {self.answer_value}"
 
 
-class ActivityEvent(models.Model):
-    """Free-form activity log: screen transitions, server hits, recording
-    start/stop, fullscreen changes, etc. `detail` holds anything
-    event-specific (e.g. which screen, which stream, error messages)."""
+# study/models.py
 
+class ActivityEvent(models.Model):
+    """
+    One row per meaningful event in a session — login, module start/end,
+    recording start/stop, question shown/answered, etc.
+    epoch_ms is the source of truth (client-side Date.now() where possible,
+    server-side time.time()*1000 as fallback) so video trimming never needs OCR again.
+    """
     EVENT_TYPES = [
-        ("session_started", "Session started (login)"),
-        ("session_ended", "Session ended"),
-        ("screen_shown", "Screen shown"),
-        ("server_hit", "Server endpoint hit"),
-        ("webcam_recording_started", "Webcam recording started"),
-        ("webcam_recording_stopped", "Webcam recording stopped"),
-        ("screen_recording_started", "Screen recording started"),
-        ("screen_recording_stopped", "Screen recording stopped"),
-        ("fullscreen_entered", "Fullscreen entered"),
-        ("fullscreen_exited", "Fullscreen exited"),
-        ("other", "Other"),
+        ("login_complete", "Login Complete"),
+        ("module_start", "Module Start"),
+        ("module_end", "Module End"),
+        ("recording_start", "Recording Start"),   # per stream_source
+        ("recording_stop", "Recording Stop"),
+        ("question_shown", "Question Shown"),
+        ("question_answered", "Question Answered"),
+        ("session_end", "Session End"),
     ]
 
-    session = models.ForeignKey(
-        StudySession, related_name="events", on_delete=models.CASCADE
-    )
-    event_type = models.CharField(max_length=40, choices=EVENT_TYPES)
-    screen_name = models.CharField(max_length=60, blank=True)
-    detail = models.JSONField(default=dict, blank=True)
-
-    client_timestamp = models.DateTimeField(
-        null=True, blank=True, help_text="Timestamp reported by the browser, if any."
-    )
-    server_timestamp = models.DateTimeField(auto_now_add=True)
-    request_path = models.CharField(max_length=255, blank=True)
+    participant = models.ForeignKey("Participant", on_delete=models.CASCADE, related_name="activity_events")
+    session_key = models.CharField(max_length=64, db_index=True)
+    event_type = models.CharField(max_length=32, choices=EVENT_TYPES)
+    epoch_ms = models.BigIntegerField(db_index=True)        # <-- unix timestamp, milliseconds
+    stream_source = models.CharField(max_length=32, blank=True, null=True)  # 'webcam' / 'screen' / '' for non-recording events
+    meta = models.JSONField(blank=True, default=dict)       # module name, question id, etc.
+    created_at = models.DateTimeField(auto_now_add=True)    # server insert time, just for debugging drift
 
     class Meta:
-        ordering = ["session", "server_timestamp"]
-        indexes = [models.Index(fields=["session", "event_type"])]
+        ordering = ["session_key", "epoch_ms"]
 
     def __str__(self):
-        return f"{self.session.participant.participant_code} · {self.event_type} · {self.server_timestamp:%H:%M:%S}"
-
-
-def recording_chunk_path(instance, filename):
-    stream = instance.stream_source
-    return (
-        f"recording_chunks/{instance.session.participant.participant_code}/"
-        f"{instance.session.session_key}/{stream}/{instance.sequence:06d}_{filename}"
-    )
-
+        return f"{self.session_key} | {self.event_type} @ {self.epoch_ms}"
 
 class RecordingChunk(models.Model):
     """One row per uploaded MP4 fragment. Chunks are concatenated into a
