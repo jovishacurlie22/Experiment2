@@ -459,7 +459,7 @@
     root.innerHTML = `
       <div class="card rating-card">
         <p class="question-meta">${ctx.section.title} — Mental effort</p>
-        <p class="question-stem">How much mental effort did you put in for the previous question?</p>
+        <p class="question-stem">Indicate the amount of mental effort you spent in the previous question.</p>
         <div class="paas-scale">
           <div class="choice-list choice-list-ordinal paas-option-list">${optionsHtml}</div>
         </div>

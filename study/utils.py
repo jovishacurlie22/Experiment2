@@ -1,12 +1,17 @@
-"""Helpers for assembling the final per-stream recording out of the
-fragmented-MP4 chunks uploaded during a session.
+"""Helpers for assembling the final per-stream recording out of the WebM
+chunks uploaded during a session.
 
-Each chunk produced by capture_session.js is a fragmented MP4 segment
-(the first chunk carries the ftyp+moov init segment, later chunks carry
-moof+mdat movie fragments). Fragmented MP4 segments are designed to be
-playable when simply concatenated byte-for-byte in order, so no
-transcoding/ffmpeg dependency is required here — this just streams the
+Each chunk produced by capture_session.js is a MediaRecorder Blob for a
+CHUNK_TIMESLICE_MS window of that stream. Simple concatenation of
+MediaRecorder's sequential Blobs in order reproduces a valid, playable WebM
+file (this is the standard "streaming MediaRecorder to disk" technique), so
+no transcoding/ffmpeg dependency is required here — this just streams the
 chunk files together in `sequence` order into one file.
+
+Frame-level timestamps for downstream analysis are extracted from the
+finalized .webm afterward via ffprobe (pts_time per frame) rather than
+tracked during upload — see frame_align.py from Experiment 1 for the same
+technique.
 """
 
 from django.core.files.base import ContentFile
@@ -44,7 +49,7 @@ def finalize_recording(session, stream_source):
         finally:
             chunk.file.close()
 
-    filename = f"{stream_source}.mp4"
+    filename = f"{stream_source}.webm"
     recording.file.save(filename, ContentFile(bytes(buf)), save=False)
     recording.chunk_count = len(chunks)
     recording.finalized_at = timezone.now()

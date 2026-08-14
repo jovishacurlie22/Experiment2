@@ -163,7 +163,7 @@ class RecordingChunk(models.Model):
 def recording_path(instance, filename):
     return (
         f"recordings/{instance.session.participant.participant_code}/"
-        f"{instance.session.session_key}/{instance.stream_source}.mp4"
+        f"{instance.session.session_key}/{instance.stream_source}.webm"
     )
 
 
