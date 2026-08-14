@@ -1,2 +1,7 @@
 staticfiles/
 staticfiles/
+db.sqlite3
+media/
+.venv/
+__pycache__/
+*.pyc

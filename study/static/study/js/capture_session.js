@@ -93,6 +93,7 @@ const CaptureSession = (() => {
   let collisionCount = { webcam: 0, screen: 0 };
   let droppedFrameCount = { webcam: 0, screen: 0 };
   let sampleCount = { webcam: 0, screen: 0 };
+  let encodedFrameCount = { webcam: 0, screen: 0 };
 
   function resetTestModeState() {
     localBuffers = { webcam: [], screen: [] };
@@ -191,7 +192,7 @@ const CaptureSession = (() => {
 
     mp4file.onSegment = (id, user, buffer, sampleNum, is_last) => {
       chunkSequence[trackType]++;
-
+      console.log(`[DEBUG] onSegment fired for ${trackType}, testMode=${testModeEnabled()}, seq=${chunkSequence[trackType]}`);
       if (testModeEnabled()) {
         // Copy the buffer (MP4Box reuses/frees its internal buffers) into
         // this stream's own array — kept fully separate from the other
@@ -256,7 +257,9 @@ const CaptureSession = (() => {
 
         // Pass the frame straight through. videoFrame.timestamp is already
         // the browser's real capture-time PTS — do not recompute it.
-        encoder.encode(videoFrame);
+        const forceKeyFrame = (encodedFrameCount[streamLabel] === 0) || (encodedFrameCount[streamLabel] % 150 === 0);
+        encoder.encode(videoFrame, { keyFrame: forceKeyFrame });
+        encodedFrameCount[streamLabel] = (encodedFrameCount[streamLabel] || 0) + 1;
         videoFrame.close();
       }
     } catch (err) {
@@ -294,6 +297,7 @@ const CaptureSession = (() => {
 
       recording = true;
       chunkSequence = { webcam: 0, screen: 0 };
+      encodedFrameCount = { webcam: 0, screen: 0 };
       epochOffset = null;
       webcamUploadQueue = Promise.resolve();
       screenUploadQueue = Promise.resolve();
@@ -319,6 +323,7 @@ const CaptureSession = (() => {
       // 4. Setup Webcam Hardware Encoder Configuration (H.264 Baseline Profile)
       webcamEncoder = new VideoEncoder({
         output: (chunk, metadata) => {
+	console.log(`[DEBUG] webcam encoder output fired, hasConfig=${!!metadata.decoderConfig}, chunkType=${chunk.type}`);
           if (metadata.decoderConfig && !webcamMux.trackId) {
             webcamMux.trackId = webcamMux.mp4file.addTrack({
               timescale: 1000000,
@@ -349,6 +354,7 @@ const CaptureSession = (() => {
       // 5. Setup Screen Hardware Encoder Configuration (H.264 Main Profile)
       screenEncoder = new VideoEncoder({
         output: (chunk, metadata) => {
+	console.log(`[DEBUG] screen encoder output fired, hasConfig=${!!metadata.decoderConfig}, chunkType=${chunk.type}`);
           if (metadata.decoderConfig && !screenMux.trackId) {
             screenMux.trackId = screenMux.mp4file.addTrack({
               timescale: 1000000,
@@ -377,8 +383,8 @@ const CaptureSession = (() => {
       });
 
       // 6. Fire up hardware config bindings
-      webcamEncoder.configure({ codec: 'avc1.42E01F', width: 1280, height: 720, bitrate: 2000000, framerate: 30 });
-      screenEncoder.configure({ codec: 'avc1.4D4028', width: 1920, height: 1080, bitrate: 5000000, framerate: 60 });
+      webcamEncoder.configure({ codec: 'avc1.42E01F', width: 1280, height: 720, bitrate: 2000000, framerate: 30, hardwareAcceleration: 'prefer-software' });
+      screenEncoder.configure({ codec: 'avc1.4D4028', width: 1920, height: 1080, bitrate: 5000000, framerate: 60, hardwareAcceleration: 'prefer-software' });
 
       // 7. Start independent ingest processing loops
       processTrackLoop(webcamReader, webcamEncoder, 'webcam');
