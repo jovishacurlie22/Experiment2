@@ -123,6 +123,12 @@ class ActivityEvent(models.Model):
     def __str__(self):
         return f"{self.session_key} | {self.event_type} @ {self.epoch_ms}"
 
+def recording_chunk_path(instance, filename):
+    return (
+        f"recordings/{instance.session.participant.participant_code}/"
+        f"{instance.session.session_key}/chunks/"
+        f"{instance.stream_source}_{instance.sequence:05d}.webm"
+    )
 class RecordingChunk(models.Model):
     """One row per uploaded MP4 fragment. Chunks are concatenated into a
     single Recording per stream once the session ends (see study.utils)."""
