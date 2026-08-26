@@ -95,34 +95,47 @@ class ActivityEvent(models.Model):
     """
     One row per meaningful event in a session — login, module start/end,
     recording start/stop, question shown/answered, etc.
-    epoch_ms is the source of truth (client-side Date.now() where possible,
-    server-side time.time()*1000 as fallback) so video trimming never needs OCR again.
     """
     EVENT_TYPES = [
         ("login_complete", "Login Complete"),
         ("module_start", "Module Start"),
         ("module_end", "Module End"),
-        ("recording_start", "Recording Start"),   # per stream_source
+        ("recording_start", "Recording Start"),
         ("recording_stop", "Recording Stop"),
         ("question_shown", "Question Shown"),
         ("question_answered", "Question Answered"),
         ("session_end", "Session End"),
+        ("session_started", "Session Started"),
+        ("screen_shown", "Screen Shown"),
+        ("server_hit", "Server Hit"),
+        ("other", "Other"),
     ]
 
-    participant = models.ForeignKey("Participant", on_delete=models.CASCADE, related_name="activity_events")
-    session_key = models.CharField(max_length=64, db_index=True)
+    participant = models.ForeignKey(
+        "Participant", on_delete=models.CASCADE, related_name="activity_events",
+        null=True, blank=True,
+    )
+    session = models.ForeignKey(
+        "StudySession", on_delete=models.CASCADE, related_name="events",
+        null=True, blank=True,
+    )
+    session_key = models.CharField(max_length=64, db_index=True, blank=True, default="")
     event_type = models.CharField(max_length=32, choices=EVENT_TYPES)
-    epoch_ms = models.BigIntegerField(db_index=True)        # <-- unix timestamp, milliseconds
-    stream_source = models.CharField(max_length=32, blank=True, null=True)  # 'webcam' / 'screen' / '' for non-recording events
-    meta = models.JSONField(blank=True, default=dict)       # module name, question id, etc.
-    created_at = models.DateTimeField(auto_now_add=True)    # server insert time, just for debugging drift
+    epoch_ms = models.BigIntegerField(db_index=True, null=True, blank=True)
+    stream_source = models.CharField(max_length=32, blank=True, null=True)
+    meta = models.JSONField(blank=True, default=dict)
+    screen_name = models.CharField(max_length=120, blank=True, default="")
+    request_path = models.CharField(max_length=255, blank=True, default="")
+    detail = models.JSONField(blank=True, default=dict)
+    client_timestamp = models.DateTimeField(null=True, blank=True)
+    server_timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["session_key", "epoch_ms"]
 
     def __str__(self):
         return f"{self.session_key} | {self.event_type} @ {self.epoch_ms}"
-
+    
 class RecordingChunk(models.Model):
     """One row per uploaded MP4 fragment. Chunks are concatenated into a
     single Recording per stream once the session ends (see study.utils)."""
