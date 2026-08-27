@@ -1,32 +1,39 @@
 /* ==========================================================================
-   capture_session.js (MediaRecorder implementation)
+   capture_session.js (WebCodecs raw elementary stream implementation)
    ========================================================================== */
- 
+
 const CaptureSession = (() => {
   let currentSessionKey = null;
- 
+
   let webcamStream = null;
   let screenStream = null;
- 
-  let webcamRecorder = null;
-  let screenRecorder = null;
- 
+
+  const WEBCODECS_SUPPORTED =
+    typeof window.MediaStreamTrackProcessor !== 'undefined' &&
+    typeof window.VideoEncoder !== 'undefined';
+
+  // Per-stream pipeline state
+  function freshPipeline() {
+    return {
+      encoder: null,
+      trackProcessor: null,
+      reader: null,
+      pumpDone: null,       // promise resolved when pump loop exits
+      frameIndex: 0,
+      sidecar: [],          // [{frame_index, timestamp_us, capture_perf_ms, is_keyframe}]
+      encodedParts: [],     // raw Annex-B byte chunks, in order
+      firstFrameLogged: false,
+      targetFps: null,
+    };
+  }
+
+  let pipelines = { webcam: null, screen: null };
   let recording = false;
-  let chunkSequence = { webcam: 0, screen: 0 };
- 
-  let webcamUploadQueue = Promise.resolve();
-  let screenUploadQueue = Promise.resolve();
- 
-  const CHUNK_TIMESLICE_MS = 2000;
- 
+
   /* ---------------------------------------------------------------- */
   /* Activity/epoch logging                                            */
   /* ---------------------------------------------------------------- */
- 
-  // Single choke point for all timestamped events. epoch_ms is captured
-  // with Date.now() at the exact call site (not inside StudyAPI, to avoid
-  // any queueing/network delay skewing the timestamp), then sent via
-  // sendBeacon so it survives page unload during module transitions.
+
   function logActivityEvent(eventType, streamSource = null, meta = {}) {
     const epochMs = Date.now();
     const payload = {
@@ -43,23 +50,15 @@ const CaptureSession = (() => {
     );
     return epochMs;
   }
- 
+
   /* ---------------------------------------------------------------- */
   /* Test-mode state — local buffering                                  */
   /* ---------------------------------------------------------------- */
- 
+
   function testModeEnabled() {
     return document.body.dataset.captureTestMode === "true";
   }
- 
-  let localBuffers = { webcam: [], screen: [] };
-  let localChunkCounts = { webcam: 0, screen: 0 };
- 
-  function resetTestModeState() {
-    localBuffers = { webcam: [], screen: [] };
-    localChunkCounts = { webcam: 0, screen: 0 };
-  }
- 
+
   function triggerDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -70,211 +69,256 @@ const CaptureSession = (() => {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 30000);
   }
- 
-  function finalizeTestModeOutput() {
+
+  function finalizeTestModeOutput(trackType, rawBlob, sidecarJson) {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
- 
-    ["webcam", "screen"].forEach((trackType) => {
-      const parts = localBuffers[trackType];
-      if (parts.length === 0) return;
-      const blob = new Blob(parts, { type: "video/webm" });
-      triggerDownload(blob, `${trackType}-${stamp}.webm`);
-    });
- 
+    triggerDownload(rawBlob, `${trackType}-${stamp}.h264`);
+    triggerDownload(
+      new Blob([JSON.stringify(sidecarJson, null, 2)], { type: 'application/json' }),
+      `${trackType}-${stamp}-sidecar.json`
+    );
     console.log(
-      "[capture_session][TEST MODE] Recording pipeline report:\n" +
-        `  webcam: ${localChunkCounts.webcam} chunks\n` +
-        `  screen: ${localChunkCounts.screen} chunks`
+      `[capture_session][TEST MODE] ${trackType}: ${sidecarJson.frames.length} frames, ` +
+      `avg fps ${sidecarJson.avg_fps.toFixed(2)}`
     );
   }
- 
+
   /* ---------------------------------------------------------------- */
-  /* Upload plumbing                                                    */
+  /* Codec negotiation                                                  */
   /* ---------------------------------------------------------------- */
- 
-  function queueUpload(queueRef, formData, streamLabel) {
-    const nextQueue = queueRef.then(() =>
-      StudyAPI.uploadChunk(formData)
-        .then(() => {
-          console.log(
-            `[capture_session] Uploaded ${streamLabel} chunk sequence: ${formData.get('sequence')}`
-          );
-        })
-        .catch((err) => {
-          console.error(`[capture_session] Error pushing ${streamLabel} chunk to Django backend:`, err);
-        })
-    );
-    return nextQueue;
-  }
- 
-  function handleChunk(trackType, blob, isLast) {
-    if (!blob || blob.size === 0) return;
- 
-    chunkSequence[trackType]++;
- 
-    if (testModeEnabled()) {
-      localBuffers[trackType].push(blob);
-      localChunkCounts[trackType]++;
-      return;
-    }
- 
-    const formData = new FormData();
-    formData.append('video_chunk', blob, `${trackType}-${chunkSequence[trackType]}.webm`);
-    formData.append('stream_source', trackType);
-    formData.append('sequence', chunkSequence[trackType]);
-    formData.append('is_last', isLast ? 'true' : 'false');
-    formData.append('session_key', currentSessionKey || '');
-    // epoch_ms of when THIS CHUNK was handed to us — lets you reconstruct
-    // approximate per-chunk wall-clock coverage independent of the
-    // recording_start anchor, as a cross-check.
-    formData.append('chunk_epoch_ms', Date.now());
- 
-    const targetQueue = trackType === 'webcam' ? webcamUploadQueue : screenUploadQueue;
-    const updated = queueUpload(targetQueue, formData, trackType);
-    if (trackType === 'webcam') {
-      webcamUploadQueue = updated;
-    } else {
-      screenUploadQueue = updated;
-    }
-  }
- 
-  function pickMimeType() {
+
+  // Try a small set of AVC (H.264) baseline/high level strings and return
+  // the first one the browser actually supports for this geometry, via
+  // VideoEncoder.isConfigSupported rather than guessing blind.
+  async function pickAvcConfig(width, height, framerate, bitrate) {
     const candidates = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm'
+      'avc1.640033', // High @ L5.1 — generous headroom for 1080p60
+      'avc1.4d0033', // Main @ L5.1
+      'avc1.42003e', // Baseline @ L6.2 — very permissive fallback
     ];
-    for (const type of candidates) {
-      if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) {
-        return type;
+    for (const codec of candidates) {
+      const config = {
+        codec,
+        width,
+        height,
+        bitrate,
+        framerate,
+        avc: { format: 'annexb' },
+      };
+      try {
+        const support = await VideoEncoder.isConfigSupported(config);
+        if (support.supported) return config;
+      } catch (e) {
+        // fall through and try the next candidate
       }
     }
-    return '';
+    return null;
   }
- 
+
+  /* ---------------------------------------------------------------- */
+  /* Pipeline: capture -> encode -> buffer                              */
+  /* ---------------------------------------------------------------- */
+
+  async function startPipeline(trackType, stream, width, height, framerate, bitrate) {
+    const track = stream.getVideoTracks()[0];
+    const config = await pickAvcConfig(width, height, framerate, bitrate);
+    if (!config) {
+      console.error(`[capture_session] No supported AVC config for ${trackType} at ${width}x${height}@${framerate}`);
+      return null;
+    }
+
+    const pipeline = freshPipeline();
+    pipeline.targetFps = framerate;
+
+    pipeline.encoder = new VideoEncoder({
+      output: (chunk, metadata) => {
+        const buf = new Uint8Array(chunk.byteLength);
+        chunk.copyTo(buf);
+        pipeline.encodedParts.push(buf);
+      },
+      error: (e) => console.error(`[capture_session] VideoEncoder error (${trackType}):`, e),
+    });
+    pipeline.encoder.configure(config);
+
+    pipeline.trackProcessor = new MediaStreamTrackProcessor({ track });
+    pipeline.reader = pipeline.trackProcessor.readable.getReader();
+
+    pipeline.pumpDone = (async () => {
+      try {
+        while (true) {
+          const { value: frame, done } = await pipeline.reader.read();
+          if (done) break;
+
+          if (!pipeline.firstFrameLogged) {
+            pipeline.firstFrameLogged = true;
+            // True capture-pipeline start: the first frame actually pulled
+            // off the track, not the moment we asked for the stream.
+            logActivityEvent('recording_start', trackType);
+          }
+
+          const idx = pipeline.frameIndex++;
+          // Force a keyframe periodically so the eventual mp4 is seekable
+          // and so a dropped upload doesn't invalidate the whole stream.
+          const keyFrame = idx % (framerate * 2) === 0; // ~every 2s
+          pipeline.sidecar.push({
+            frame_index: idx,
+            timestamp_us: frame.timestamp,
+            capture_perf_ms: performance.now(),
+            is_keyframe: keyFrame,
+          });
+
+          pipeline.encoder.encode(frame, { keyFrame });
+          frame.close();
+        }
+      } catch (err) {
+        console.error(`[capture_session] Pump loop error (${trackType}):`, err);
+      }
+    })();
+
+    return pipeline;
+  }
+
+  async function stopPipeline(trackType, pipeline) {
+    if (!pipeline) return null;
+
+    // Cancelling the reader unblocks the pump loop's `await read()`.
+    try { await pipeline.reader.cancel(); } catch (e) { /* already closed */ }
+    await pipeline.pumpDone;
+
+    if (pipeline.encoder && pipeline.encoder.state !== 'closed') {
+      await pipeline.encoder.flush();
+      pipeline.encoder.close();
+    }
+
+    const rawBlob = new Blob(pipeline.encodedParts, { type: 'video/H264' });
+    const frameCount = pipeline.sidecar.length;
+    const durationS = frameCount > 0
+      ? (pipeline.sidecar[frameCount - 1].timestamp_us - pipeline.sidecar[0].timestamp_us) / 1e6
+      : 0;
+    const avgFps = durationS > 0 ? frameCount / durationS : pipeline.targetFps;
+
+    const sidecarJson = {
+      session_key: currentSessionKey || '',
+      stream_source: trackType,
+      target_fps: pipeline.targetFps,
+      avg_fps: avgFps,
+      frame_count: frameCount,
+      frames: pipeline.sidecar,
+    };
+
+    return { rawBlob, sidecarJson };
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Upload                                                             */
+  /* ---------------------------------------------------------------- */
+
+  async function uploadRecording(trackType, rawBlob, sidecarJson) {
+    const formData = new FormData();
+    formData.append('video_raw', rawBlob, `${trackType}.h264`);
+    formData.append('sidecar_json', JSON.stringify(sidecarJson));
+    formData.append('stream_source', trackType);
+    formData.append('session_key', currentSessionKey || '');
+
+    try {
+      const resp = await fetch('/api/upload-recording/', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+      });
+      if (!resp.ok) {
+        console.error(`[capture_session] Upload failed for ${trackType}: HTTP ${resp.status}`);
+      } else {
+        console.log(`[capture_session] Uploaded ${trackType} recording (${rawBlob.size} bytes, ${sidecarJson.frame_count} frames).`);
+      }
+    } catch (err) {
+      console.error(`[capture_session] Upload error for ${trackType}:`, err);
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Public: start / stop                                              */
+  /* ---------------------------------------------------------------- */
+
   async function startWebcamRecording(sessionKey) {
     const body = document.body;
     const shouldRecord = body.dataset.recordWebcam === 'true';
     currentSessionKey = sessionKey || currentSessionKey;
- 
+
     if (!shouldRecord) {
       console.log('[capture_session] Recording disabled via data-record-webcam="false" — skipping.');
       return;
     }
- 
-    if (!window.MediaRecorder) {
-      console.warn('[capture_session] MediaRecorder is not available in this browser — recording skipped.');
+
+    if (!WEBCODECS_SUPPORTED) {
+      console.warn('[capture_session] WebCodecs (MediaStreamTrackProcessor/VideoEncoder) not available in this browser — recording skipped.');
       return;
     }
- 
+
     try {
       console.log('[capture_session] Initializing capture devices...');
- 
+
       webcamStream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720, frameRate: { ideal: 30 } },
-        audio: false
+        audio: false,
       });
-      // NOTE: getUserMedia resolving is device-permission time, not
-      // recording start — no log here anymore. See onstart below.
- 
       screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: { width: 1920, height: 1080, frameRate: { ideal: 60 } },
-        audio: false
+        audio: false,
       });
- 
+
       recording = true;
-      chunkSequence = { webcam: 0, screen: 0 };
-      webcamUploadQueue = Promise.resolve();
-      screenUploadQueue = Promise.resolve();
-      if (testModeEnabled()) {
-        resetTestModeState();
-        console.log('[capture_session] TEST MODE enabled — recordings will be buffered locally and downloaded on stop.');
-      }
- 
-      const mimeType = pickMimeType();
- 
-      webcamRecorder = new MediaRecorder(
-        webcamStream,
-        mimeType ? { mimeType, videoBitsPerSecond: 2000000 } : undefined
-      );
-      webcamRecorder.ondataavailable = (e) => handleChunk('webcam', e.data, false);
-      webcamRecorder.onerror = (e) => console.error('[capture_session] Webcam MediaRecorder error:', e);
-      // onstart fires the instant the recorder actually begins producing
-      // data — this is the true anchor for offset_webcam_ms math, not the
-      // moment .start() was called (there can be a few ms of setup lag).
-      webcamRecorder.onstart = () => logActivityEvent('recording_start', 'webcam');
-      webcamRecorder.start(CHUNK_TIMESLICE_MS);
- 
-      screenRecorder = new MediaRecorder(
-        screenStream,
-        mimeType ? { mimeType, videoBitsPerSecond: 5000000 } : undefined
-      );
-      screenRecorder.ondataavailable = (e) => handleChunk('screen', e.data, false);
-      screenRecorder.onerror = (e) => console.error('[capture_session] Screen MediaRecorder error:', e);
-      screenRecorder.onstart = () => logActivityEvent('recording_start', 'screen');
-      screenRecorder.start(CHUNK_TIMESLICE_MS);
- 
-      console.log('[capture_session] Dual recording engine online (MediaRecorder, mimeType: ' + (mimeType || 'browser default') + ').');
+
+      pipelines.webcam = await startPipeline('webcam', webcamStream, 1280, 720, 30, 2_000_000);
+      pipelines.screen = await startPipeline('screen', screenStream, 1920, 1080, 60, 5_000_000);
+
+      console.log('[capture_session] WebCodecs dual capture pipelines online (raw AVC Annex-B, server-side muxing).');
     } catch (err) {
-      console.warn('[capture_session] Critical error starting dual recording pipelines:', err);
-      stopWebcamRecording();
+      console.warn('[capture_session] Critical error starting dual capture pipelines:', err);
+      await stopWebcamRecording();
     }
   }
- 
+
   async function stopWebcamRecording() {
     recording = false;
     console.log('[capture_session] Initiating session shutdown sequence...');
- 
-    const stopPromises = [];
- 
-    if (webcamRecorder && webcamRecorder.state !== 'inactive') {
-      stopPromises.push(
-        new Promise((resolve) => {
-          webcamRecorder.ondataavailable = (e) => {
-            handleChunk('webcam', e.data, true);
-            resolve();
-          };
-          webcamRecorder.stop();
-        })
-      );
+
+    const results = {};
+    for (const trackType of ['webcam', 'screen']) {
+      const pipeline = pipelines[trackType];
+      pipelines[trackType] = null;
+      if (!pipeline) continue;
+      results[trackType] = await stopPipeline(trackType, pipeline);
     }
-    if (screenRecorder && screenRecorder.state !== 'inactive') {
-      stopPromises.push(
-        new Promise((resolve) => {
-          screenRecorder.ondataavailable = (e) => {
-            handleChunk('screen', e.data, true);
-            resolve();
-          };
-          screenRecorder.stop();
-        })
-      );
-    }
- 
-    await Promise.all(stopPromises);
- 
+
     if (webcamStream) {
       webcamStream.getTracks().forEach((t) => t.stop());
       webcamStream = null;
-      logActivityEvent('recording_stop', 'webcam');
     }
     if (screenStream) {
       screenStream.getTracks().forEach((t) => t.stop());
       screenStream = null;
-      logActivityEvent('recording_stop', 'screen');
     }
- 
-    webcamRecorder = null;
-    screenRecorder = null;
- 
-    await Promise.all([webcamUploadQueue, screenUploadQueue]);
- 
-    if (testModeEnabled()) {
-      finalizeTestModeOutput();
+
+    for (const trackType of ['webcam', 'screen']) {
+      const result = results[trackType];
+      if (!result) continue;
+
+      logActivityEvent('recording_stop', trackType, {
+        frame_count: result.sidecarJson.frame_count,
+        avg_fps: result.sidecarJson.avg_fps,
+      });
+
+      if (testModeEnabled()) {
+        finalizeTestModeOutput(trackType, result.rawBlob, result.sidecarJson);
+      } else {
+        await uploadRecording(trackType, result.rawBlob, result.sidecarJson);
+      }
     }
- 
-    console.log('[capture_session] Recorders and upload queues drained. Recording fully stopped.');
+
+    console.log('[capture_session] Recorders stopped, encoders flushed, uploads complete.');
   }
- 
+
   function initRealEye() {
     if (window.RealEye) {
       console.log('[capture_session] RealEye SDK detected. Wiring trigger loops.');
@@ -282,12 +326,11 @@ const CaptureSession = (() => {
       console.log('[capture_session] RealEye SDK not detected on this page.');
     }
   }
- 
+
   return {
     start: startWebcamRecording,
     stop: stopWebcamRecording,
     initRealEye,
-    logEvent: logActivityEvent, // exposed so app.js can log module_start/module_end, login_complete, etc.
+    logEvent: logActivityEvent,
   };
 })();
- 

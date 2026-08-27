@@ -1,16 +1,25 @@
 import json
 import tempfile
 from pathlib import Path
+import os
+import tempfile
+from pathlib import Path
 
 from django.conf import settings
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+from .recording_ingest import mux_and_lock_cfr
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
-
-from .models import ActivityEvent, Participant, QuestionResponse, RecordingChunk, StudySession
+from django.views.decorators.csrf import csrf_exempt
+from .models import ActivityEvent, Participant, QuestionResponse, Recording, RecordingChunk, StudySession
 from .utils import finalize_all_recordings, finalize_recording
 from .recording_ingest import mux_and_lock_cfr
 
@@ -223,35 +232,94 @@ def finish_session(request):
     return JsonResponse({"ok": True})
 
 
-# --- NOT YET FIXED — references a `Recording` model that doesn't exist. ---
-# Real model is `RecordingChunk`. Need models.py + utils.py before finishing this.
 @require_POST
 def upload_recording(request):
-    session_key = request.POST.get('session_key')
-    stream_source = request.POST.get('stream_source')
-    raw_file = request.FILES.get('video_raw')
-    sidecar = json.loads(request.POST.get('sidecar_json', '{}'))
-
-    if not (session_key and stream_source and raw_file):
-        return JsonResponse({'error': 'missing fields'}, status=400)
-
+    """
+    WebCodecs flow: client uploads one complete raw AVC Annex-B elementary
+    stream + a JSON timing sidecar at session end (no chunking). ffmpeg
+    muxes it into an mp4 and locks it to a constant frame rate here.
+    """
+    session_key = request.POST.get("session_key")
     session, error = get_session_or_error({"session_key": session_key})
     if error:
         return error
+    request._study_session = session
+
+    stream_source = request.POST.get("stream_source")
+    if stream_source not in dict(RecordingChunk.STREAM_CHOICES):
+        return JsonResponse({"error": "stream_source must be 'webcam' or 'screen'"}, status=400)
+
+    raw_file = request.FILES.get("video_raw")
+    if raw_file is None:
+        return JsonResponse({"error": "video_raw file is required"}, status=400)
+
+    try:
+        sidecar = json.loads(request.POST.get("sidecar_json", "{}"))
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid sidecar_json"}, status=400)
+
+    output_dir = os.path.join(
+        settings.MEDIA_ROOT, "recordings",
+        session.participant.participant_code, str(session.session_key),
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f"{stream_source}.mp4")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        raw_path = Path(tmpdir) / f'{stream_source}.h264'
-        with open(raw_path, 'wb') as f:
+        raw_path = Path(tmpdir) / f"{stream_source}.h264"
+        with open(raw_path, "wb") as f:
             for chunk in raw_file.chunks():
                 f.write(chunk)
 
-        out_path = Path(tmpdir) / f'{stream_source}.mp4'
-        avg_fps = sidecar.get('avg_fps') or sidecar.get('target_fps') or 30
-        target_fps = sidecar.get('target_fps') or 30
+        avg_fps = sidecar.get("avg_fps") or sidecar.get("target_fps") or 30
+        target_fps = sidecar.get("target_fps") or 30
 
-        mux_and_lock_cfr(raw_path, avg_fps, target_fps, out_path)
+        try:
+            mux_and_lock_cfr(raw_path, avg_fps, target_fps, Path(output_path))
+        except Exception as e:
+            logger.error(
+                "ffmpeg mux/CFR-lock failed for %s/%s: %s",
+                session.session_key, stream_source, e,
+            )
+            return JsonResponse({"error": "video processing failed"}, status=500)
 
-        # TODO: this needs to write into RecordingChunk (or a new field on
-        # it), not a nonexistent `Recording` model. Fixing once models.py
-        # is confirmed.
-        raise NotImplementedError("upload_recording needs models.py to finish correctly")
+    recording, _ = Recording.objects.update_or_create(
+        session=session,
+        stream_source=stream_source,
+        defaults={
+            "file": os.path.relpath(output_path, settings.MEDIA_ROOT),
+            "chunk_count": sidecar.get("frame_count", 0),
+            "finalized_at": timezone.now(),
+        },
+    )
+
+    return JsonResponse({"ok": True, "recording_id": recording.id})
+
+@csrf_exempt
+@require_POST
+def log_activity_event(request):
+    """
+    Receives navigator.sendBeacon() payloads from capture_session.js
+    (recording_start/recording_stop with precise epoch_ms). Beacon sends
+    a Blob body, not multipart form data or a normal fetch — read raw
+    request.body as JSON.
+    """
+    try:
+        payload = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid JSON body"}, status=400)
+
+    session, error = get_session_or_error(payload)
+    if error:
+        return error
+
+    ActivityEvent.objects.create(
+        participant=session.participant,
+        session=session,
+        session_key=payload.get("session_key", ""),
+        event_type=payload.get("event_type", "other"),
+        epoch_ms=payload.get("epoch_ms"),
+        stream_source=payload.get("stream_source"),
+        meta=payload.get("meta") or {},
+    )
+    return JsonResponse({"ok": True})
