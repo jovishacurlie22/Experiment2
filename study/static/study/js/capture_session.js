@@ -213,6 +213,11 @@ const CaptureSession = (() => {
   /* Upload                                                             */
   /* ---------------------------------------------------------------- */
 
+  function getCookie(name) {
+    const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return match ? decodeURIComponent(match.pop()) : '';
+  }
+
   async function uploadRecording(trackType, rawBlob, sidecarJson) {
     const formData = new FormData();
     formData.append('video_raw', rawBlob, `${trackType}.h264`);
@@ -225,6 +230,7 @@ const CaptureSession = (() => {
         method: 'POST',
         body: formData,
         credentials: 'same-origin',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
       });
       if (!resp.ok) {
         console.error(`[capture_session] Upload failed for ${trackType}: HTTP ${resp.status}`);
