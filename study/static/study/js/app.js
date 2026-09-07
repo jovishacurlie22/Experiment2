@@ -37,8 +37,20 @@
   const PARTICIPANT_IDS = window.STUDY_PARTICIPANT_IDS || Array.from({ length: 30 }, (_, i) => String(i + 1));
 
   const ALL_MODULES = window.STUDY_MODULES || [];
-  const ACTIVE_MODULE_IDS = (window.STUDY_CONFIG && window.STUDY_CONFIG.activeModuleIds) || [];
-  const MAX_QUESTIONS_ESTIMATE = StudyEngine.estimateMaxQuestions(ALL_MODULES, ACTIVE_MODULE_IDS);
+  // Only used for the "up to N questions" estimate on the instructions
+  // screen — that count is order-independent, so any config will do here.
+  // The real per-participant config is picked in getActiveConfig() below,
+  // once we know whether the logged-in ID is odd or even.
+  const DEFAULT_CONFIG = window.STUDY_CONFIG_ASC || window.STUDY_CONFIG || { activeModuleIds: [] };
+  const MAX_QUESTIONS_ESTIMATE = StudyEngine.estimateMaxQuestions(ALL_MODULES, DEFAULT_CONFIG.activeModuleIds);
+
+  // Odd participant IDs -> ascending cognitive-load order.
+  // Even participant IDs -> descending cognitive-load order.
+  function getActiveConfig() {
+    const idNum = parseInt(state.participantId, 10);
+    const isEven = Number.isFinite(idNum) && idNum % 2 === 0;
+    return (isEven ? window.STUDY_CONFIG_DESC : window.STUDY_CONFIG_ASC) || window.STUDY_CONFIG || { activeModuleIds: [] };
+  }
   // Standard 9-point PAAS mental-effort scale — every point gets its own
   // explicit label (not just the two endpoints) so nothing is ambiguous.
   const EFFORT_SCALE = [
@@ -338,8 +350,12 @@
         </div>
       </div>
     `;
-    document.getElementById("btn-start").addEventListener("click", () => {
-      StudyEngine.init(ALL_MODULES, ACTIVE_MODULE_IDS, (qid) => state.answers[qid]);
+      document.getElementById("btn-start").addEventListener("click", () => {
+      // study_engine.js reads section/question order overrides straight off
+      // window.STUDY_CONFIG, so swap the global to the variant this
+      // participant's ID selects before initializing.
+      window.STUDY_CONFIG = getActiveConfig();
+      StudyEngine.init(ALL_MODULES, window.STUDY_CONFIG.activeModuleIds, (qid) => state.answers[qid]);
       const hasQuestion = StudyEngine.start();
       if (!hasQuestion) {
         finishStudy("completed");
@@ -391,6 +407,8 @@
 
   // Renders the ordered horizontal scale used for "ordinal" questions, so
   // the low->high order defined in the schema is visually obvious.
+    // Renders the ordered horizontal scale used for "ordinal" questions, so
+  // the low->high order defined in the schema is visually obvious.
   function renderOrdinalScale(q) {
     const optionsHtml = q.options
       .map(
@@ -406,6 +424,62 @@
     return `<div class="choice-list choice-list-ordinal" id="choice-list">${optionsHtml}</div>`;
   }
 
+  // "Select all that apply" checkbox list. Answer is stored as an array of
+  // option values.
+  function renderMultiList(q) {
+    const selected = Array.isArray(state.answers[q.id]) ? state.answers[q.id] : [];
+    const optionsHtml = q.options
+      .map(
+        (opt) => `
+        <label class="choice-option choice-option-multi">
+          <input type="checkbox" name="answer" value="${opt.value}" ${
+          selected.includes(opt.value) ? "checked" : ""
+        } />
+          <span class="option-text">${opt.label}</span>
+        </label>`
+      )
+      .join("");
+    return `<div class="choice-list choice-list-multi" id="choice-list">${optionsHtml}</div>`;
+  }
+
+  // Single numeric input (e.g. age).
+  function renderNumericInput(q) {
+    const val = state.answers[q.id] || "";
+    return `<div class="text-input-wrap"><input type="number" id="text-answer" inputmode="numeric" value="${val}" /></div>`;
+  }
+
+  // Single open-text input.
+  function renderTextInput(q) {
+    const val = state.answers[q.id] || "";
+    return `<div class="text-input-wrap"><input type="text" id="text-answer" value="${val}" /></div>`;
+  }
+
+  // A shared response scale (q.options) rated once per sub-item (q.items).
+  // Answer is stored as an object keyed by item id.
+  function renderMatrix(q) {
+    const current = state.answers[q.id] && typeof state.answers[q.id] === "object" ? state.answers[q.id] : {};
+    const rows = q.items
+      .map((item) => {
+        const cells = q.options
+          .map(
+            (opt) => `
+          <label class="matrix-cell">
+            <input type="radio" name="matrix-${item.id}" value="${opt.value}" ${
+              current[item.id] === opt.value ? "checked" : ""
+            } />
+            <span class="matrix-cell-label">${opt.label}</span>
+          </label>`
+          )
+          .join("");
+        return `<div class="matrix-row" data-item-id="${item.id}">
+          <p class="matrix-row-label">${item.label}</p>
+          <div class="matrix-row-options">${cells}</div>
+        </div>`;
+      })
+      .join("");
+    return `<div class="matrix-grid" id="matrix-grid">${rows}</div>`;
+  }
+
   function renderQuestion() {
     const ctx = StudyEngine.getContext();
     const q = ctx.question;
@@ -413,9 +487,16 @@
       finishStudy("completed");
       return;
     }
-    state.questionPresentedAt = StudyAPI.nowIso();
+        state.questionPresentedAt = StudyAPI.nowIso();
     const groupBadge = q.group ? `<span class="group-badge">Follow-up</span>` : "";
-    const optionsMarkup = q.type === "ordinal" ? renderOrdinalScale(q) : renderChoiceList(q);
+
+    let optionsMarkup;
+    if (q.type === "ordinal") optionsMarkup = renderOrdinalScale(q);
+    else if (q.type === "multi") optionsMarkup = renderMultiList(q);
+    else if (q.type === "numeric") optionsMarkup = renderNumericInput(q);
+    else if (q.type === "text") optionsMarkup = renderTextInput(q);
+    else if (q.type === "matrix") optionsMarkup = renderMatrix(q);
+    else optionsMarkup = renderChoiceList(q); // binary / nominal / categorical
 
     root.innerHTML = `
       <div class="card question-card">
@@ -429,12 +510,44 @@
     `;
 
     const nextBtn = document.getElementById("btn-next");
-    document.querySelectorAll('input[name="answer"]').forEach((input) => {
-      input.addEventListener("change", (e) => {
-        state.answers[q.id] = e.target.value;
-        nextBtn.disabled = false;
+
+    if (q.type === "multi") {
+      document.querySelectorAll('input[name="answer"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((i) => i.value);
+          state.answers[q.id] = checked;
+          nextBtn.disabled = checked.length === 0;
+        });
       });
-    });
+    } else if (q.type === "numeric" || q.type === "text") {
+      const input = document.getElementById("text-answer");
+      input.addEventListener("input", () => {
+        state.answers[q.id] = input.value;
+        nextBtn.disabled = input.value.trim() === "";
+      });
+    } else if (q.type === "matrix") {
+      const answerObj = {};
+      const checkComplete = () => {
+        nextBtn.disabled = q.items.some((item) => answerObj[item.id] === undefined);
+      };
+      q.items.forEach((item) => {
+        document.querySelectorAll(`input[name="matrix-${item.id}"]`).forEach((input) => {
+          input.addEventListener("change", (e) => {
+            answerObj[item.id] = e.target.value;
+            state.answers[q.id] = answerObj;
+            checkComplete();
+          });
+        });
+      });
+    } else {
+      document.querySelectorAll('input[name="answer"]').forEach((input) => {
+        input.addEventListener("change", (e) => {
+          state.answers[q.id] = e.target.value;
+          nextBtn.disabled = false;
+        });
+      });
+    }
+
     nextBtn.addEventListener("click", () => {
       if (nextBtn.disabled) return; // guard: no answer selected, can't advance
       goTo("rating");
@@ -484,11 +597,14 @@
 
       // Persist the full answer + effort rating for this question, with
       // both the presented-at and answered-at timestamps, to Django.
+            const rawAnswer = state.answers[q.id];
+      const serializedAnswer = typeof rawAnswer === "string" ? rawAnswer : JSON.stringify(rawAnswer);
+
       StudyAPI.submitResponse(state.sessionKey, {
         moduleId: ctx.module.id,
         sectionId: ctx.section.id,
         questionId: q.id,
-        answerValue: state.answers[q.id],
+        answerValue: serializedAnswer,
         effortRating: state.effort[q.id],
         presentedAt: state.questionPresentedAt,
         answeredAt: StudyAPI.nowIso()

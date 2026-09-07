@@ -674,3 +674,53 @@ h1.study-title {
   padding: 0.45rem 0.9rem;
   font-size: 0.85rem;
 }
+/* Multi-select ("select all that apply") checkboxes — same card look as
+   choice-list, just checkboxes instead of radios. */
+.choice-list-multi .choice-option-multi {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Plain text/numeric input, styled to match the choice cards. */
+.text-input-wrap {
+  margin: 1.25rem 0;
+}
+.text-input-wrap input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+}
+
+/* Matrix grid: one row per sub-item, one radio group per row sharing the
+   same option scale. */
+.matrix-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 1.25rem 0;
+}
+.matrix-row-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.matrix-row-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.matrix-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.matrix-cell-label {
+  font-size: 0.9rem;
+}

@@ -75,28 +75,42 @@ const StudyEngine = (() => {
   /* Condition evaluation                                              */
   /* ---------------------------------------------------------------- */
 
-  function evalCondition(cond) {
+   function evalCondition(cond) {
     const val = getAnswer(cond.questionId);
     if (val === undefined) return false;
+    // "any": true as soon as the parent has *any* answer, regardless of
+    // value — used where the source workbook's skip-logic prose couldn't
+    // be resolved to a specific trigger value automatically.
+    if ("any" in cond) return true;
     if ("equals" in cond) return val === cond.equals;
     if ("notEquals" in cond) return val !== cond.notEquals;
     if ("in" in cond) return cond.in.includes(val);
     if ("notIn" in cond) return !cond.notIn.includes(val);
+    // Multi-select parents (type "multi") store their answer as an array
+    // of selected option values.
+    if ("includes" in cond) return Array.isArray(val) && val.includes(cond.includes);
+    if ("excludes" in cond) return Array.isArray(val) && !val.includes(cond.excludes);
+    if ("includesAny" in cond) return Array.isArray(val) && cond.includesAny.some((c) => val.includes(c));
+    if ("excludesAny" in cond) return Array.isArray(val) && !cond.excludesAny.some((c) => val.includes(c));
     // Unrecognized condition shape — fail safe by showing the item rather
     // than silently hiding study content.
     console.warn("[StudyEngine] Unrecognized condition shape:", cond);
     return true;
   }
 
-  // showIf: item is shown only when the condition is true. No showIf -> always shown.
+  // showIf: item is shown only when the condition is true (or, if `cond` is
+  // an array, when ANY condition in it is true). No showIf -> always shown.
   function shouldShow(cond) {
     if (!cond) return true;
+    if (Array.isArray(cond)) return cond.some((c) => evalCondition(c));
     return evalCondition(cond);
   }
 
-  // skipIf: item is skipped when the condition is true. No skipIf -> never skipped.
+  // skipIf: item is skipped when the condition is true (array -> ANY true).
+  // No skipIf -> never skipped.
   function shouldSkip(cond) {
     if (!cond) return false;
+    if (Array.isArray(cond)) return cond.some((c) => evalCondition(c));
     return evalCondition(cond);
   }
 

@@ -70,7 +70,7 @@ class QuestionResponse(models.Model):
     section_id = models.CharField(max_length=120)
     question_id = models.CharField(max_length=120)
 
-    answer_value = models.CharField(max_length=500)
+    answer_value = models.CharField(max_length=4000)
     effort_rating = models.PositiveSmallIntegerField(null=True, blank=True)
 
     presented_at = models.DateTimeField(

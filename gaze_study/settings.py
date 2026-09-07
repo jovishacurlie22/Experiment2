@@ -151,7 +151,7 @@ STUDY_PASSWORD = os.environ.get('STUDY_PASSWORD', 'survey2026')
 
 # Participant IDs accepted at login are "1".."N" (as strings), matching the
 # original PARTICIPANT_IDS array in app.js.
-STUDY_PARTICIPANT_COUNT = int(os.environ.get('STUDY_PARTICIPANT_COUNT', '30'))
+STUDY_PARTICIPANT_COUNT = int(os.environ.get('STUDY_PARTICIPANT_COUNT', '50'))
 
 # Default RealEye stimulusId injected into index.html; override per-deployment.
 REALEYE_STIMULUS_ID = os.environ.get('REALEYE_STIMULUS_ID', '')
