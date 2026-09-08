@@ -18,11 +18,11 @@ window.STUDY_CONFIG_ASC = {
 
   sectionOrder: {
     "demographics": [
-      "Age",
-      "Gender",
-      "Role",
-      "Department",
-      "Socioeconomic Status",
+      "demographics-age",
+      "demographics-gender",
+      "demographics-role",
+      "demographics-department",
+      "demographics-socioeconomic-status",
     ],
     "hms-overall-health": [
       "hms-overall-health-nutrition",
@@ -267,11 +267,11 @@ window.STUDY_CONFIG_DESC = {
 
   sectionOrder: {
     "demographics": [
-      "Socioeconomic Status",
-      "Department",
-      "Role",
-      "Gender",
-      "Age",
+      "demographics-socioeconomic-status",
+      "demographics-department",
+      "demographics-role",
+      "demographics-gender",
+      "demographics-age",
     ],
     "mecamh-climate-anxiety": [
       "mecamh-climate-anxiety-anticipatory-traumatic-reaction-feelings-sub-scale-hopwood-et-al-2017",
