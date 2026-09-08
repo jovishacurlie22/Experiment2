@@ -739,3 +739,26 @@ h1.study-title {
   height: 1.1rem;
   cursor: pointer;
 }
+
+/* Matrix questions need much more horizontal room than a normal question
+   card — the fixed 640px width forces heavy row-label wrapping, which is
+   what was blowing up the vertical height. Let the card grow, and use a
+   fixed-width label column so wrapping doesn't happen unpredictably. */
+.question-card:has(.matrix-wrap) {
+  max-width: min(94vw, 1500px);
+  width: min(94vw, 1500px);
+}
+
+.matrix-table {
+  table-layout: fixed;
+}
+
+.matrix-corner,
+.matrix-row-label {
+  width: 320px;           /* comfortable, mostly-one-line label column */
+}
+
+.matrix-table thead th:not(.matrix-corner),
+.matrix-cell {
+  width: auto;            /* remaining columns split the rest evenly */
+}
