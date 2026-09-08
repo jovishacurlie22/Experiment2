@@ -456,28 +456,60 @@
 
   // A shared response scale (q.options) rated once per sub-item (q.items).
   // Answer is stored as an object keyed by item id.
+   // A shared response scale (q.options) rated once per sub-item (q.items),
+  // rendered as a real 2D table (rows = items, columns = the shared scale)
+  // rather than a stacked list -- standard survey grid layout, and avoids
+  // the wrapping/misalignment a flex-based row layout risks on longer
+  // option labels. Answer is stored as an object keyed by item id. input
+  // name/value attributes are unchanged, so the existing event-binding
+  // code in renderQuestion() below needs no changes.
   function renderMatrix(q) {
     const current = state.answers[q.id] && typeof state.answers[q.id] === "object" ? state.answers[q.id] : {};
+    const headerCells = q.options.map((opt) => `<th class="matrix-col-label">${opt.label}</th>`).join("");
     const rows = q.items
       .map((item) => {
         const cells = q.options
           .map(
             (opt) => `
-          <label class="matrix-cell">
+          <td class="matrix-cell">
             <input type="radio" name="matrix-${item.id}" value="${opt.value}" ${
               current[item.id] === opt.value ? "checked" : ""
             } />
-            <span class="matrix-cell-label">${opt.label}</span>
-          </label>`
+          </td>`
           )
           .join("");
-        return `<div class="matrix-row" data-item-id="${item.id}">
-          <p class="matrix-row-label">${item.label}</p>
-          <div class="matrix-row-options">${cells}</div>
-        </div>`;
+        return `<tr data-item-id="${item.id}">
+          <th scope="row" class="matrix-row-label">${item.label}</th>
+          ${cells}
+        </tr>`;
       })
       .join("");
-    return `<div class="matrix-grid" id="matrix-grid">${rows}</div>`;
+    return `
+      <div class="matrix-wrap" id="matrix-grid">
+        <table class="matrix-table">
+          <thead><tr><th class="matrix-corner"></th>${headerCells}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // Gaze-tracking calibration is tied to fixed on-screen coordinates, so
+  // NOTHING on this page is allowed to scroll -- regardless of how many
+  // matrix rows a question has. If a rendered card would overflow the
+  // available viewport height, scale it down in small steps (rather than
+  // truncating content or introducing a scrollbar) until it fits.
+  function fitCardToViewport(cardSelector) {
+    const card = document.querySelector(cardSelector);
+    const container = document.querySelector(".container");
+    if (!card || !container) return;
+    card.style.transform = "";
+    card.style.transformOrigin = "top center";
+    let scale = 1;
+    for (let i = 0; i < 20; i++) {
+      if (card.scrollHeight <= container.clientHeight || scale <= 0.55) break;
+      scale -= 0.05;
+      card.style.transform = `scale(${scale})`;
+    }
   }
 
   function renderQuestion() {
@@ -508,6 +540,8 @@
         </div>
       </div>
     `;
+
+    requestAnimationFrame(() => fitCardToViewport(".question-card"));
 
     const nextBtn = document.getElementById("btn-next");
 

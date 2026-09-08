@@ -22,7 +22,8 @@
 html, body {
   margin: 0;
   padding: 0;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -31,9 +32,10 @@ body {
   background: radial-gradient(circle at 15% 20%, var(--bg-2), transparent 30%),
               radial-gradient(circle at 80% 10%, #dde7ff, transparent 25%),
               var(--bg-1);
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 a { color: var(--accent); }
@@ -128,22 +130,17 @@ a { color: var(--accent); }
 
 .container {
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.25rem;
+  padding: 1rem 1.25rem;
+  overflow: hidden;
 }
 
-/* ---------------------------------------------------------------------- */
-/* Card                                                                   */
-/* ---------------------------------------------------------------------- */
-
 .card {
-  background: var(--surface);
-  border: 1px solid rgba(20, 25, 38, 0.08);
-  border-radius: 14px;
-  padding: 1.1rem;
-  box-shadow: 0 8px 22px rgba(14, 22, 42, 0.08);
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .login-card, .instructions-card, .question-card, .rating-card, .end-card, .module-intro-card {
@@ -695,32 +692,50 @@ h1.study-title {
   box-sizing: border-box;
 }
 
-/* Matrix grid: one row per sub-item, one radio group per row sharing the
-   same option scale. */
-.matrix-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+.matrix-wrap {
   margin: 1.25rem 0;
+  overflow: hidden; /* never this element's own scrollbar -- see fitCardToViewport */
 }
-.matrix-row-label {
+
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.matrix-table thead th {
   font-weight: 600;
-  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+  vertical-align: bottom;
 }
-.matrix-row-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
+
+.matrix-corner {
+  width: 30%;
 }
+
+.matrix-row-label {
+  text-align: left;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  border-top: 1px solid rgba(20, 25, 38, 0.08);
+}
+
+.matrix-table tbody tr:first-child .matrix-row-label,
+.matrix-table tbody tr:first-child .matrix-cell {
+  border-top: none;
+}
+
 .matrix-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border-color, #d0d5dd);
-  border-radius: 0.5rem;
-  cursor: pointer;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  border-top: 1px solid rgba(20, 25, 38, 0.08);
 }
-.matrix-cell-label {
-  font-size: 0.9rem;
+
+.matrix-cell input[type="radio"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
 }
