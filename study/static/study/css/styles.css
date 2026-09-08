@@ -691,6 +691,17 @@ h1.study-title {
   border-radius: 0.5rem;
   box-sizing: border-box;
 }
+.text-input-wrap select {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+  background: #fff;
+  font-family: inherit;
+  cursor: pointer;
+}
 
 .matrix-wrap {
   margin: 1.25rem 0;

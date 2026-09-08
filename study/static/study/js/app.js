@@ -454,6 +454,21 @@
     return `<div class="text-input-wrap"><input type="text" id="text-answer" value="${val}" /></div>`;
   }
 
+  // Single-select dropdown for a small fixed set of numeric/ordinal
+  // values (e.g. hours of sleep) where a full choice-card list would be
+  // too visually heavy.
+  function renderDropdown(q) {
+    const val = state.answers[q.id] || "";
+    const optionsHtml = q.options
+      .map(
+        (opt) => `<option value="${opt.value}" ${opt.value === val ? "selected" : ""}>${opt.label}</option>`
+      )
+      .join("");
+    return `<div class="text-input-wrap"><select id="text-answer"><option value="" disabled ${
+      val ? "" : "selected"
+    }>Select…</option>${optionsHtml}</select></div>`;
+  }
+
   // A shared response scale (q.options) rated once per sub-item (q.items).
   // Answer is stored as an object keyed by item id.
    // A shared response scale (q.options) rated once per sub-item (q.items),
@@ -527,6 +542,7 @@
     else if (q.type === "multi") optionsMarkup = renderMultiList(q);
     else if (q.type === "numeric") optionsMarkup = renderNumericInput(q);
     else if (q.type === "text") optionsMarkup = renderTextInput(q);
+    else if (q.type === "dropdown") optionsMarkup = renderDropdown(q);
     else if (q.type === "matrix") optionsMarkup = renderMatrix(q);
     else optionsMarkup = renderChoiceList(q); // binary / nominal / categorical
 
@@ -546,8 +562,26 @@
     const nextBtn = document.getElementById("btn-next");
 
     if (q.type === "multi") {
+      // Options flagged `exclusive: true` in the schema (e.g. "No, never
+      // been diagnosed...", "Don't know", "None of the above") can't
+      // coexist with any other selection in this question: checking one
+      // clears every other checkbox, and checking anything else clears
+      // any exclusive option that was previously checked.
+      const exclusiveValues = new Set(q.options.filter((opt) => opt.exclusive).map((opt) => opt.value));
       document.querySelectorAll('input[name="answer"]').forEach((input) => {
-        input.addEventListener("change", () => {
+        input.addEventListener("change", (e) => {
+          const allInputs = document.querySelectorAll('input[name="answer"]');
+          if (e.target.checked) {
+            if (exclusiveValues.has(e.target.value)) {
+              allInputs.forEach((other) => {
+                if (other !== e.target) other.checked = false;
+              });
+            } else {
+              allInputs.forEach((other) => {
+                if (exclusiveValues.has(other.value)) other.checked = false;
+              });
+            }
+          }
           const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((i) => i.value);
           state.answers[q.id] = checked;
           nextBtn.disabled = checked.length === 0;
@@ -558,6 +592,12 @@
       input.addEventListener("input", () => {
         state.answers[q.id] = input.value;
         nextBtn.disabled = input.value.trim() === "";
+      });
+    } else if (q.type === "dropdown") {
+      const input = document.getElementById("text-answer");
+      input.addEventListener("change", () => {
+        state.answers[q.id] = input.value;
+        nextBtn.disabled = input.value === "";
       });
     } else if (q.type === "matrix") {
       const answerObj = {};
