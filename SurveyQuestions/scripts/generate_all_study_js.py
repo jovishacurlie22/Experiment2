@@ -149,6 +149,19 @@ CLAUSE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Excel workbook sheet-tab names are hard-capped at 31 characters, and both
+# hms_survey.xlsx and mecamhsurvey.xlsx have module sheets that got silently
+# truncated at save time -- the missing text is gone from the tab itself, so
+# it has to be restored here rather than recovered from any file. Keyed by
+# the exact (truncated) sheet name as it appears in the workbook today.
+# TODO: confirm "Mental Health Service Utilizati" -> exact intended full
+# title with the source questionnaire (guessing "Mental Health Service
+# Utilization" below -- please correct if the real title differs/continues).
+MODULE_TITLE_OVERRIDES = {
+    "Mental Health Service Utilizati": "Mental Health Service Utilization",
+    "Coping Responses and Climate Ch": "Coping Responses and Climate Change",
+}
+
 
 def guess_type(question_text, options, is_matrix):
     if is_matrix:
@@ -358,7 +371,7 @@ def build_hms_content():
 
         modules.append({
             "id": module_id,
-            "title": sheet_name,
+            "title": MODULE_TITLE_OVERRIDES.get(sheet_name, sheet_name),
             "sections": [
                 {"id": f"{module_id}-{slugify(name)}", "title": name, "questions": sections_by_name[name]}
                 for name in section_order if sections_by_name[name]
@@ -414,7 +427,7 @@ def build_mecamh_content():
 
         modules.append({
             "id": module_id,
-            "title": sheet_name,
+            "title": MODULE_TITLE_OVERRIDES.get(sheet_name, sheet_name),
             "sections": [
                 {"id": f"{module_id}-{slugify(name)}", "title": name, "questions": sections_by_name[name]}
                 for name in section_order if sections_by_name[name]
@@ -503,8 +516,12 @@ def order_module_by_direction(module, direction):
 
 
 def module_score(module):
+    # Ranked by SUM of question scores, matching reorder_cognitive_load.py's
+    # own "Module order (ascending Cognitive Load sum)" convention -- HMS and
+    # MECAMH modules are merged and sorted together on this single scale, so
+    # neither source is ever grouped separately from the other.
     all_scores = [q["_score"] for sec in module["sections"] for q in sec["questions"]]
-    return sum(all_scores) / len(all_scores) if all_scores else 0
+    return sum(all_scores)
 
 
 # ---------------------------------------------------------------------------
