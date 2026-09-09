@@ -5,8 +5,8 @@ PATCHES.md (nested sectionOrder/questionOrder ordering; in/notIn/includes/
 excludes/includesAny/excludesAny/any condition vocabulary; array showIf = OR).
 
 Demographics: no cognitive-load scoring exists for it and none is wanted --
-it's always first, fixed question order, only its own section order flips
-between ASC/DESC (per generate_config.py's stated design).
+it's always first, with one fixed section/question order used in both ASC
+and DESC (it does not flip between directions).
 
 HMS: content + ASC ordering from ../outputs/hms_question_score_reordered.xlsx
 (reorder_cognitive_load.py output, ascending direction). DESC is derived
@@ -250,7 +250,7 @@ def build_hms_content():
         qnum_to_id = {}
         qnum_to_row = {}
         for row in rows:
-            qnum = clean(row.get("Question #"))
+            qnum = clean(row.get("Source Question #"))
             if qnum:
                 qid = f"{module_id}-q{qnum}"
                 qnum_to_id[qnum] = qid
@@ -269,7 +269,7 @@ def build_hms_content():
         qid_to_type = {}
 
         for row in rows:
-            qnum = clean(row.get("Question #"))
+            qnum = clean(row.get("Source Question #"))
             qid = qnum_to_id.get(qnum)
             if qid is None:
                 continue
@@ -681,8 +681,12 @@ if __name__ == "__main__":
     asc_module_order = ["demographics"] + [m["id"] for m in scored_modules]
     desc_module_order = ["demographics"] + [m["id"] for m in reversed(scored_modules)]
 
+    # Demographics keeps one fixed section/question order in both ASC and
+    # DESC -- it isn't cognitive-load-scored, so there's nothing principled
+    # to flip; only the scored HMS/MECAMH modules after it differ by
+    # direction.
     section_order_asc = {"demographics": demo_section_order}
-    section_order_desc = {"demographics": list(reversed(demo_section_order))}
+    section_order_desc = {"demographics": demo_section_order}
     question_order_asc = {}
     question_order_desc = {}
 
