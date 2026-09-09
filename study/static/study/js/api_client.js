@@ -59,12 +59,20 @@ window.StudyAPI = (() => {
     nowIso,
 
     // POST /api/login/  -> { session_key }
-    login(participantId, password) {
-      return postJSON("/api/login/", {
+    login(participantId, password, extra) {
+      return postJSON("/api/login/", Object.assign({
         participant_id: participantId,
         password,
         client_timestamp: nowIso()
-      });
+      }, extra || {}));
+    },
+
+    // POST /api/consent/ — fire-and-forget, fires the instant consent is
+    // given, independent of whether login later succeeds.
+    logConsent() {
+      return postJSON("/api/consent/", {
+        client_timestamp: nowIso()
+      }).catch((err) => console.warn("[StudyAPI] logConsent failed:", err));
     },
 
     // POST /api/log-event/ — fire-and-forget; logs to console on failure

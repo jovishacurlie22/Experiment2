@@ -87,8 +87,10 @@ def login_view(request):
         return JsonResponse({"error": "invalid participant ID or password"}, status=401)
 
     participant, _ = Participant.objects.get_or_create(participant_code=participant_id)
+    consent_given_at = parse_client_dt(payload.get("consent_given_at"))
     session = StudySession.objects.create(
         participant=participant,
+        consent_given_at=consent_given_at,
         stimulus_id=payload.get("stimulus_id", "") or getattr(settings, "REALEYE_STIMULUS_ID", ""),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
         ip_address=client_ip(request),
@@ -98,9 +100,37 @@ def login_view(request):
         event_type="session_started",
         client_timestamp=parse_client_dt(payload.get("client_timestamp")),
     )
+    if consent_given_at:
+        ActivityEvent.objects.create(
+            session=session,
+            event_type="consent_given",
+            client_timestamp=consent_given_at,
+        )
     request._study_session = session
 
     return JsonResponse({"session_key": str(session.session_key)})
+
+
+@require_POST
+def log_consent(request):
+    """Fires the instant a participant clicks 'Agree and Continue' on the
+    consent screen -- logged independently of login_view/session creation,
+    so a participant who consents and then abandons before logging in
+    still leaves a server-side record of that consent."""
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid JSON body"}, status=400)
+
+    ActivityEvent.objects.create(
+        event_type="consent_given",
+        client_timestamp=parse_client_dt(payload.get("client_timestamp")),
+        detail={
+            "ip_address": client_ip(request),
+            "user_agent": request.META.get("HTTP_USER_AGENT", ""),
+        },
+    )
+    return JsonResponse({"ok": True})
 
 
 @require_POST

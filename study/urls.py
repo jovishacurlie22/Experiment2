@@ -13,4 +13,5 @@ urlpatterns = [
     path("api/finish-session/", views.finish_session, name="finish_session"),
     path("api/upload-recording/", views.upload_recording, name="upload_recording"),
     path("log-activity-event/", views.log_activity_event, name="log_activity_event"),
+    path("api/consent/", views.log_consent, name="log_consent"),
 ]

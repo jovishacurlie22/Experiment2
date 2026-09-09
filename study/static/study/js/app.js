@@ -66,10 +66,12 @@
   ];
 
   const state = {
-    screen: "login",
+    screen: "consent",
+    consentGivenAt: null,
     participantId: null,
     sessionKey: null, // set on successful server-side login (StudySession.session_key)
     answers: {},   // qid -> option value
+    answerLastChangedAt: {}, // qid -> ISO timestamp of the most recent change to that answer
     effort: {},    // qid -> paas rating 1-9
     currentModuleId: null, // last module id a module-intro screen was shown for
     questionPresentedAt: null, // ISO timestamp: when the current question screen appeared
@@ -269,6 +271,45 @@
   /* Screens                                                            */
   /* ---------------------------------------------------------------- */
 
+  function renderConsent() {
+    root.innerHTML = `
+      <div class="card login-card">
+        <p class="study-eyebrow">Step 1 of 2</p>
+        <h1 class="study-title">Disclaimer and Consent</h1>
+        <p class="study-lede">
+          During this study, your webcam feed and screen activity may be recorded for research
+          purposes while you complete the experiment tasks. Recorded clips are used only for
+          study analysis.
+        </p>
+        <p class="study-lede">
+          Participation is voluntary. You may stop at any point before beginning the experiment.
+          By continuing below, you confirm that you understand the recording setup and consent
+          to participate in the study.
+        </p>
+        <div class="field checkbox-field">
+          <input type="checkbox" id="consent-checkbox" />
+          <label for="consent-checkbox">I have read the above and consent to participate.</label>
+        </div>
+        <div class="field-error" id="consent-error">Please check the box to continue.</div>
+        <button class="btn btn-primary btn-block" id="btn-consent-continue">Agree and Continue</button>
+      </div>
+    `;
+    document.getElementById("btn-consent-continue").addEventListener("click", () => {
+      const checked = document.getElementById("consent-checkbox").checked;
+      const err = document.getElementById("consent-error");
+      if (!checked) {
+        err.classList.add("visible");
+        return;
+      }
+      err.classList.remove("visible");
+      state.consentGivenAt = new Date().toISOString();
+      // Logged immediately -- independent of whether login succeeds
+      // afterward, so an abandoned session still leaves a record.
+      StudyAPI.logConsent();
+      goTo("login");
+    });
+  }
+
   function renderLogin() {
     root.innerHTML = `
       <div class="card login-card">
@@ -310,11 +351,14 @@
       enterFullscreen();
 
       loginBtn.disabled = true;
-      StudyAPI.login(id, pw)
+      StudyAPI.login(id, pw, { consent_given_at: state.consentGivenAt })
         .then(({ session_key }) => {
           state.participantId = id;
           state.sessionKey = session_key;
 
+          // Redundant safety net -- the timer actually starts at script
+          // boot now (see bottom of file), not here. Left in case boot
+          // ever runs before sessionStorage is writable for some reason.
           ensureTimerStarted();
           CaptureSession.initRealEye();
           CaptureSession.start(session_key);
@@ -527,6 +571,29 @@
     }
   }
 
+  // Called on every answer change, including a participant revising an
+  // earlier selection (e.g. picking a different matrix row, or unchecking
+  // one multi-select box and checking another). Updates the last-changed
+  // timestamp used for response-time calculation, and -- for discrete
+  // option-based inputs, not raw text keystrokes -- also logs a
+  // question_answered activity event so the full revision history is on
+  // the server, not just the final value.
+  function recordAnswerChange(q, ctx, value, { logIt = true } = {}) {
+    const now = StudyAPI.nowIso();
+    state.answerLastChangedAt[q.id] = now;
+    if (logIt && state.sessionKey) {
+      StudyAPI.logEvent(state.sessionKey, "question_answered", {
+        screenName: "question",
+        detail: {
+          moduleId: ctx.module.id,
+          sectionId: ctx.section.id,
+          questionId: q.id,
+          value
+        }
+      });
+    }
+  }
+
   function renderQuestion() {
     const ctx = StudyEngine.getContext();
     const q = ctx.question;
@@ -584,6 +651,7 @@
           }
           const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((i) => i.value);
           state.answers[q.id] = checked;
+          recordAnswerChange(q, ctx, checked);
           nextBtn.disabled = checked.length === 0;
         });
       });
@@ -591,12 +659,14 @@
       const input = document.getElementById("text-answer");
       input.addEventListener("input", () => {
         state.answers[q.id] = input.value;
+        recordAnswerChange(q, ctx, input.value, { logIt: false });
         nextBtn.disabled = input.value.trim() === "";
       });
     } else if (q.type === "dropdown") {
       const input = document.getElementById("text-answer");
       input.addEventListener("change", () => {
         state.answers[q.id] = input.value;
+        recordAnswerChange(q, ctx, input.value);
         nextBtn.disabled = input.value === "";
       });
     } else if (q.type === "matrix") {
@@ -609,6 +679,7 @@
           input.addEventListener("change", (e) => {
             answerObj[item.id] = e.target.value;
             state.answers[q.id] = answerObj;
+            recordAnswerChange(q, ctx, answerObj);
             checkComplete();
           });
         });
@@ -617,6 +688,7 @@
       document.querySelectorAll('input[name="answer"]').forEach((input) => {
         input.addEventListener("change", (e) => {
           state.answers[q.id] = e.target.value;
+          recordAnswerChange(q, ctx, e.target.value);
           nextBtn.disabled = false;
         });
       });
@@ -681,7 +753,11 @@
         answerValue: serializedAnswer,
         effortRating: state.effort[q.id],
         presentedAt: state.questionPresentedAt,
-        answeredAt: StudyAPI.nowIso()
+        // The moment the answer itself was last changed -- not now, which
+        // would also count time spent on this (the effort-rating) screen.
+        // Falls back to questionPresentedAt in the unexpected case no
+        // change was ever recorded.
+        answeredAt: state.answerLastChangedAt[q.id] || state.questionPresentedAt
       }).catch((err) => console.error("[app] Failed to submit response:", err));
 
       const hasNext = StudyEngine.next();
@@ -736,7 +812,8 @@
   function goTo(screen) {
     state.screen = screen;
     renderChrome();
-    if (screen === "login") renderLogin();
+    if (screen === "consent") renderConsent();
+    else if (screen === "login") renderLogin();
     else if (screen === "instructions") renderInstructions();
     else if (screen === "moduleIntro") renderModuleIntro();
     else if (screen === "question") renderQuestion();
@@ -763,6 +840,11 @@
     if (state.ended) return;
     state.ended = true;
     state.endReason = reason;
+    // Stop the timer the instant End Study is confirmed (or timeout fires),
+    // not after the recording finishes saving -- CaptureSession.stop() and
+    // StudyAPI.finishSession() below can take a few seconds, and the timer
+    // must not keep counting through that.
+    sessionStorage.removeItem(TIMER_KEY);
     disableBackTrap();
     goTo("saving"); // show a holding screen while the recording flushes/uploads
     await CaptureSession.stop();
@@ -773,7 +855,6 @@
         console.error("[app] Failed to notify server of session end:", err);
       }
     }
-    sessionStorage.removeItem(TIMER_KEY);
     exitFullscreen();
     goTo("end");
   }
@@ -799,5 +880,10 @@
   /* Boot                                                               */
   /* ---------------------------------------------------------------- */
 
-  goTo("login");
+  // Timer starts the moment this script runs (i.e. as soon as the page
+  // appears), not when login succeeds -- ensureTimerStarted() is a no-op
+  // if a timer is already running in this sessionStorage, so this is safe
+  // to also be a no-op-safe call from renderLogin() below.
+  ensureTimerStarted();
+  goTo("consent");
 })();
