@@ -35,6 +35,7 @@ class StudySession(models.Model):
     )
     session_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     stimulus_id = models.CharField(max_length=120, blank=True)
+    consent_given_at = models.DateTimeField(null=True, blank=True)
 
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
@@ -108,6 +109,7 @@ class ActivityEvent(models.Model):
         ("session_started", "Session Started"),
         ("screen_shown", "Screen Shown"),
         ("server_hit", "Server Hit"),
+        ("consent_given", "Consent Given"),
         ("other", "Other"),
     ]
 
