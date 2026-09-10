@@ -705,10 +705,10 @@ if __name__ == "__main__":
         question_order_asc.update(q_asc)
         question_order_desc.update(q_desc)
 
-    with open("study_schema.generated.js", "w", encoding="utf-8") as f:
+    with open("study_schema.js", "w", encoding="utf-8") as f:
         f.write(emit_schema_js(all_modules, all_review))
 
-    with open("study_config.generated.js", "w", encoding="utf-8") as f:
+    with open("study_config.js", "w", encoding="utf-8") as f:
         asc_js = emit_config_js("STUDY_CONFIG_ASC", "ascending", asc_module_order, section_order_asc, question_order_asc)
         desc_js = emit_config_js("STUDY_CONFIG_DESC", "descending", desc_module_order, section_order_desc, question_order_desc)
         default_js = "// Back-compat default before a participant id is known (e.g. the\n// \"up to N questions\" estimate on the instructions screen).\nwindow.STUDY_CONFIG = window.STUDY_CONFIG_ASC;\n"
