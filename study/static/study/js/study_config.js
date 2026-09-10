@@ -266,12 +266,12 @@ window.STUDY_CONFIG_DESC = {
   ],
 
   sectionOrder: {
-    "demographics": [
-      "demographics-socioeconomic-status",
-      "demographics-department",
-      "demographics-role",
-      "demographics-gender",
+     "demographics": [
       "demographics-age",
+      "demographics-gender",
+      "demographics-role",
+      "demographics-department",
+      "demographics-socioeconomic-status",
     ],
     "mecamh-climate-anxiety": [
       "mecamh-climate-anxiety-anticipatory-traumatic-reaction-feelings-sub-scale-hopwood-et-al-2017",
