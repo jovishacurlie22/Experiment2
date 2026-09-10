@@ -286,11 +286,6 @@
           By continuing below, you confirm that you understand the recording setup and consent
           to participate in the study.
         </p>
-        <div class="field checkbox-field">
-          <input type="checkbox" id="consent-checkbox" />
-          <label for="consent-checkbox">I have read the above and consent to participate.</label>
-        </div>
-        <div class="field-error" id="consent-error">Please check the box to continue.</div>
         <button class="btn btn-primary btn-block" id="btn-consent-continue">Agree and Continue</button>
       </div>
     `;
