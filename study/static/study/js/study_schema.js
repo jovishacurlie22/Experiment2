@@ -462,12 +462,11 @@ window.STUDY_MODULES = [
         id: "hms-mental-health-status-sleep",
         title: "Sleep",
         questions: [
-        {
+                {
           id: "hms-mental-health-status-q20",
-          type: "dropdown",
+          type: "nominal",
           stem: "On average, how many hours of sleep, on average, do you get on weeknights?",
           options: [
-            { value: "0", label: "0 hours" },
             { value: "1", label: "1 hour" },
             { value: "2", label: "2 hours" },
             { value: "3", label: "3 hours" },
@@ -475,19 +474,14 @@ window.STUDY_MODULES = [
             { value: "5", label: "5 hours" },
             { value: "6", label: "6 hours" },
             { value: "7", label: "7 hours" },
-            { value: "8", label: "8 hours" },
-            { value: "9", label: "9 hours" },
-            { value: "10", label: "10 hours" },
-            { value: "11", label: "11 hours" },
-            { value: "12", label: "12 or more hours" },
+            { value: "7+", label: "7+ hours" },
           ],
         },
-        {
+                {
           id: "hms-mental-health-status-q21",
-          type: "dropdown",
+          type: "nominal",
           stem: "On average, year, how many hours of sleep, on average, do you get on weekend nights?",
           options: [
-            { value: "0", label: "0 hours" },
             { value: "1", label: "1 hour" },
             { value: "2", label: "2 hours" },
             { value: "3", label: "3 hours" },
@@ -495,11 +489,7 @@ window.STUDY_MODULES = [
             { value: "5", label: "5 hours" },
             { value: "6", label: "6 hours" },
             { value: "7", label: "7 hours" },
-            { value: "8", label: "8 hours" },
-            { value: "9", label: "9 hours" },
-            { value: "10", label: "10 hours" },
-            { value: "11", label: "11 hours" },
-            { value: "12", label: "12 or more hours" },
+            { value: "7+", label: "7+ hours" },
           ],
         },
         ]
