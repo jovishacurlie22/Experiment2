@@ -425,11 +425,10 @@ def build_mecamh_content():
                 "_qnum": qnum, "_score": row.get("Cognitive Load Score") or 0,
             }
             if is_matrix:
-                stem = matrix_stem_only(question_text)
-                items = split_matrix_items(question_text)
+                stem, items = split_matrix_stem_and_items(question_text)
                 question["stem"] = stem
                 question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
-                review_notes.append((qid, "matrix_split", f"{len(items)} items parsed from numbered list"))
+                review_notes.append((qid, "matrix_split", f"{len(items)} items parsed" + ("" if stem else " — EMPTY STEM, needs manual review")))
 
             sections_by_name[sec_name].append(question)
 
