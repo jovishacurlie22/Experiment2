@@ -29,6 +29,12 @@ import re
 
 import openpyxl
 
+from pathlib import Path
+
+# Script lives in SurveyQuestions/scripts/; static JS lives at
+# Experiment2/study/static/study/js/ -- write straight there so there's
+# no manual copy step left to forget.
+STATIC_JS_DIR = Path(__file__).resolve().parent.parent.parent / "study" / "static" / "study" / "js"
 
 def slugify(text):
     text = re.sub(r"[^a-zA-Z0-9]+", "-", str(text).strip().lower())
@@ -705,10 +711,10 @@ if __name__ == "__main__":
         question_order_asc.update(q_asc)
         question_order_desc.update(q_desc)
 
-    with open("study_schema.js", "w", encoding="utf-8") as f:
+    with open(STATIC_JS_DIR /"study_schema.js", "w", encoding="utf-8") as f:
         f.write(emit_schema_js(all_modules, all_review))
 
-    with open("study_config.js", "w", encoding="utf-8") as f:
+    with open(STATIC_JS_DIR /"study_config.js", "w", encoding="utf-8") as f:
         asc_js = emit_config_js("STUDY_CONFIG_ASC", "ascending", asc_module_order, section_order_asc, question_order_asc)
         desc_js = emit_config_js("STUDY_CONFIG_DESC", "descending", desc_module_order, section_order_desc, question_order_desc)
         default_js = "// Back-compat default before a participant id is known (e.g. the\n// \"up to N questions\" estimate on the instructions screen).\nwindow.STUDY_CONFIG = window.STUDY_CONFIG_ASC;\n"
