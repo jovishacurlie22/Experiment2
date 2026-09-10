@@ -87,10 +87,8 @@ def login_view(request):
         return JsonResponse({"error": "invalid participant ID or password"}, status=401)
 
     participant, _ = Participant.objects.get_or_create(participant_code=participant_id)
-    consent_given_at = parse_client_dt(payload.get("consent_given_at"))
     session = StudySession.objects.create(
         participant=participant,
-        consent_given_at=consent_given_at,
         stimulus_id=payload.get("stimulus_id", "") or getattr(settings, "REALEYE_STIMULUS_ID", ""),
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
         ip_address=client_ip(request),
@@ -100,12 +98,6 @@ def login_view(request):
         event_type="session_started",
         client_timestamp=parse_client_dt(payload.get("client_timestamp")),
     )
-    if consent_given_at:
-        ActivityEvent.objects.create(
-            session=session,
-            event_type="consent_given",
-            client_timestamp=consent_given_at,
-        )
     request._study_session = session
 
     return JsonResponse({"session_key": str(session.session_key)})
@@ -114,17 +106,28 @@ def login_view(request):
 @require_POST
 def log_consent(request):
     """Fires the instant a participant clicks 'Agree and Continue' on the
-    consent screen -- logged independently of login_view/session creation,
-    so a participant who consents and then abandons before logging in
-    still leaves a server-side record of that consent."""
+    consent screen, which now comes after login -- session_key is always
+    known by this point, so consent_given_at is written directly onto the
+    StudySession created at login, and the consent_given ActivityEvent is
+    tied to that same session."""
     try:
         payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"error": "invalid JSON body"}, status=400)
 
+    session, error = get_session_or_error(payload)
+    if error:
+        return error
+    request._study_session = session
+
+    consent_given_at = parse_client_dt(payload.get("consent_given_at")) or timezone.now()
+    session.consent_given_at = consent_given_at
+    session.save(update_fields=["consent_given_at"])
+
     ActivityEvent.objects.create(
+        session=session,
         event_type="consent_given",
-        client_timestamp=parse_client_dt(payload.get("client_timestamp")),
+        client_timestamp=consent_given_at,
         detail={
             "ip_address": client_ip(request),
             "user_agent": request.META.get("HTTP_USER_AGENT", ""),

@@ -271,10 +271,10 @@
   /* Screens                                                            */
   /* ---------------------------------------------------------------- */
 
-  function renderConsent() {
+   function renderConsent() {
     root.innerHTML = `
       <div class="card login-card">
-        <p class="study-eyebrow">Step 1 of 2</p>
+        <p class="study-eyebrow">Step 2 of 2</p>
         <h1 class="study-title">Disclaimer and Consent</h1>
         <p class="study-lede">
           During this study, your webcam feed and screen activity may be recorded for research
@@ -303,17 +303,17 @@
       }
       err.classList.remove("visible");
       state.consentGivenAt = new Date().toISOString();
-      // Logged immediately -- independent of whether login succeeds
-      // afterward, so an abandoned session still leaves a record.
-      StudyAPI.logConsent();
-      goTo("login");
+      // Attaches consent_given_at to the StudySession created at login,
+      // keyed by session_key -- see log_consent in views.py.
+      StudyAPI.logConsent(state.sessionKey, state.consentGivenAt);
+      goTo("instructions");
     });
   }
 
-  function renderLogin() {
+   function renderLogin() {
     root.innerHTML = `
       <div class="card login-card">
-        <p class="study-eyebrow">Eye Gaze Study</p>
+        <p class="study-eyebrow">Step 1 of 2</p>
         <h1 class="study-title">Participant Login</h1>
         <p class="study-lede">Please enter your assigned participant ID and the study password to begin.</p>
         <div class="field">
@@ -351,7 +351,10 @@
       enterFullscreen();
 
       loginBtn.disabled = true;
-      StudyAPI.login(id, pw, { consent_given_at: state.consentGivenAt })
+      // consent_given_at isn't known yet -- consent comes next, and
+      // StudyAPI.logConsent() will attach it to this session by session_key
+      // once given.
+      StudyAPI.login(id, pw, {})
         .then(({ session_key }) => {
           state.participantId = id;
           state.sessionKey = session_key;
@@ -362,7 +365,7 @@
           ensureTimerStarted();
           CaptureSession.initRealEye();
           CaptureSession.start(session_key);
-          goTo("instructions");
+          goTo("consent");
         })
         .catch((loginErr) => {
           console.error("[app] Login failed:", loginErr);
@@ -885,5 +888,5 @@
   // if a timer is already running in this sessionStorage, so this is safe
   // to also be a no-op-safe call from renderLogin() below.
   ensureTimerStarted();
-  goTo("consent");
+  goTo("login");
 })();

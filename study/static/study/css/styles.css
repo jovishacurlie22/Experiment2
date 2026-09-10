@@ -310,12 +310,22 @@ h1.study-title {
   gap: 0.75rem;
 }
 
-.choice-option input[type="radio"] {
+.choice-option:not(.paas-option) {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.choice-option:not(.paas-option) input[type="radio"] {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
   accent-color: var(--accent);
   cursor: pointer;
+}
+
+.choice-option.paas-option input[type="radio"] {
+  display: none;
 }
 
 .choice-option .option-text {

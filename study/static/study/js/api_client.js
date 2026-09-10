@@ -69,8 +69,13 @@ window.StudyAPI = (() => {
 
     // POST /api/consent/ — fire-and-forget, fires the instant consent is
     // given, independent of whether login later succeeds.
-    logConsent() {
+        // POST /api/consent/ — fire-and-forget. Now called after login, once
+    // session_key is known, so the server can attach consent_given_at to
+    // the right StudySession rather than logging it anonymously.
+    logConsent(sessionKey, consentGivenAt) {
       return postJSON("/api/consent/", {
+        session_key: sessionKey,
+        consent_given_at: consentGivenAt,
         client_timestamp: nowIso()
       }).catch((err) => console.warn("[StudyAPI] logConsent failed:", err));
     },
