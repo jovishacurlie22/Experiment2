@@ -103,45 +103,54 @@ def find_option_code(option_text, options):
     return None
 
 
-# ---------------------------------------------------------------------------
-# Matrix sub-item splitting -- two patterns seen:
-#   Explicit numbered list, one item per line: "...\n1. Item one\n2. Item two"
-#     (MECAMH -- reliable, try this first)
-#   Bundled sentences / ellipsis (HMS-style bare text, no line breaks)
-# ---------------------------------------------------------------------------
-
-def split_matrix_items(question_text):
+def split_matrix_stem_and_items(question_text):
+    """Split a matrix question's raw bundled text into (stem, items) in a
+    single pass so the two can never duplicate each other."""
     text = question_text.strip()
 
-    numbered_lines = re.findall(r"^\s*(\d+)\.\s+(.+?)\s*$", text, re.MULTILINE)
-    if len(numbered_lines) >= 2:
-        return [item for _num, item in numbered_lines]
-
-    ellipsis_parts = re.split(r"[\u2026]+|\.\.\.+", text)
-    ellipsis_parts = [p.strip(" .") for p in ellipsis_parts if p.strip(" .")]
-    if len(ellipsis_parts) >= 3:
-        return ellipsis_parts[1:]
-
-    stem_match = re.match(r"^(.*?[?:])\s+(.*)$", text, re.DOTALL)
-    remainder = stem_match.group(2) if stem_match else text
-    word_boundary_parts = re.split(r"(?<=[a-z\)\.,])\s+(?=[A-Z])", remainder)
-    word_boundary_parts = [p.strip() for p in word_boundary_parts if p.strip()]
-    if len(word_boundary_parts) >= 2:
-        return word_boundary_parts
-    return [text]
-
-
-def matrix_stem_only(question_text):
-    """The intro/instructions text before the numbered list, for display as
-    the question stem (the numbered items themselves become matrixItems)."""
-    text = question_text.strip()
+    # Pattern 1: explicit numbered list, one item per line (MECAMH-style).
     numbered_lines = re.findall(r"^\s*(\d+)\.\s+(.+?)\s*$", text, re.MULTILINE)
     if len(numbered_lines) >= 2:
         first_num_pos = re.search(r"^\s*1\.\s+", text, re.MULTILINE)
-        if first_num_pos:
-            return text[: first_num_pos.start()].strip()
-    return text
+        stem = text[:first_num_pos.start()].strip() if first_num_pos else ""
+        return stem, [item for _num, item in numbered_lines]
 
+    # Pattern 2: ellipsis-separated bundle -- first part is the intro.
+    ellipsis_parts = re.split(r"[\u2026]+|\.\.\.+", text)
+    ellipsis_parts = [p.strip(" .") for p in ellipsis_parts if p.strip(" .")]
+    if len(ellipsis_parts) >= 3:
+        return ellipsis_parts[0], ellipsis_parts[1:]
+
+    # Pattern 3: intro clause ending in "?" or ":" followed by bundled
+    # sentences (e.g. "...following: How often...? How often...?").
+    # NOTE: "?" added to the lookbehind class below -- this is what was
+    # missing, causing the Loneliness question to fail this split entirely.
+    stem_match = re.match(r"^(.*?[?:])\s+(.*)$", text, re.DOTALL)
+    if stem_match:
+        remainder = stem_match.group(2)
+        parts = re.split(r"(?<=[a-z\)\.,\?])\s+(?=[A-Z])", remainder)
+        parts = [p.strip() for p in parts if p.strip()]
+        if len(parts) >= 2:
+            return stem_match.group(1), parts
+
+    # Pattern 4: no "?"/":" divider at all (e.g. "Below are 8 statements...
+    # Using the 1-7 scale... I lead a purposeful life. My social...").
+    # Intro text may itself span more than one sentence, so use a declared
+    # count ("8 statements") when present to know how many trailing
+    # sentences are real rows vs. lead-in instructions.
+    parts = re.split(r"(?<=[a-z\)\.,])\s+(?=[A-Z])", text)
+    parts = [p.strip() for p in parts if p.strip()]
+    if len(parts) >= 2:
+        count_match = re.search(r"\b(\d+)\s+(?:statements|items|questions)\b", text, re.IGNORECASE)
+        if count_match:
+            n = int(count_match.group(1))
+            if 0 < n < len(parts):
+                return " ".join(parts[:-n]), parts[-n:]
+        return parts[0], parts[1:]
+
+    # Truly nothing to split on -- don't fabricate a duplicate; leave the
+    # stem empty and flag for manual review instead.
+    return "", [text]
 
 CLAUSE_RE = re.compile(
     r'["\u201c]([^"\u201c\u201d]+)["\u201d]\s+is\s+(not\s+)?selected\s+for\s+'
@@ -290,11 +299,10 @@ def build_hms_content():
                                 if p.strip() and p.strip() in qnum_to_id],
             }
             if is_matrix:
-                stem = matrix_stem_only(question_text)
-                items = split_matrix_items(question_text)
+                stem, items = split_matrix_stem_and_items(question_text)
                 question["stem"] = stem
                 question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
-                review_notes.append((qid, "matrix_split", f"{len(items)} items guessed/parsed from bundled text"))
+                review_notes.append((qid, "matrix_split", f"{len(items)} items parsed" + ("" if stem else " — EMPTY STEM, needs manual review")))
 
             sections_by_name[sec_name].append(question)
 

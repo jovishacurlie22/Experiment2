@@ -3,7 +3,11 @@
    Style ported from GazeEstimationApp styles.css / base.html conventions.
    Token-first: re-skin the whole site by editing :root only.
    ========================================================================== */
-
+/* Add near the top, right after the :root block, to bump the whole
+   site's type scale in one place. */
+html {
+  font-size: 18px; /* was implicit 16px browser default */
+}
 :root {
   --bg-1: #f3f7ff;      /* base background, pale blue */
   --bg-2: #e5fff4;      /* background gradient accent, pale mint */
@@ -708,40 +712,32 @@ h1.study-title {
   overflow: hidden; /* never this element's own scrollbar -- see fitCardToViewport */
 }
 
+/* Replace the existing .matrix-table / thead th / row-label rules with: */
 .matrix-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 1rem;           /* was 0.85rem */
 }
 
 .matrix-table thead th {
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.92rem;        /* was 0.78rem */
   color: var(--muted);
-  padding: 0.4rem 0.5rem;
+  padding: 0.35rem 0.5rem;   /* was 0.4rem 0.5rem — a touch tighter */
   text-align: center;
   vertical-align: bottom;
-}
-
-.matrix-corner {
-  width: 30%;
 }
 
 .matrix-row-label {
   text-align: left;
   font-weight: 500;
-  padding: 0.5rem 0.75rem 0.5rem 0;
+  padding: 0.4rem 0.75rem 0.4rem 0;  /* was 0.5rem — reclaim vertical room */
   border-top: 1px solid rgba(20, 25, 38, 0.08);
-}
-
-.matrix-table tbody tr:first-child .matrix-row-label,
-.matrix-table tbody tr:first-child .matrix-cell {
-  border-top: none;
 }
 
 .matrix-cell {
   text-align: center;
-  padding: 0.5rem 0.25rem;
+  padding: 0.4rem 0.25rem;   /* was 0.5rem 0.25rem */
   border-top: 1px solid rgba(20, 25, 38, 0.08);
 }
 
@@ -755,9 +751,12 @@ h1.study-title {
    card — the fixed 640px width forces heavy row-label wrapping, which is
    what was blowing up the vertical height. Let the card grow, and use a
    fixed-width label column so wrapping doesn't happen unpredictably. */
+/* Widen the matrix card a bit further and give the row-label column
+   less fixed width, since freed-up horizontal space compensates for
+   the reclaimed vertical padding above. */
 .question-card:has(.matrix-wrap) {
-  max-width: min(94vw, 1500px);
-  width: min(94vw, 1500px);
+  max-width: min(97vw, 1700px);   /* was min(94vw, 1500px) */
+  width: min(97vw, 1700px);
 }
 
 .matrix-table {
@@ -766,7 +765,7 @@ h1.study-title {
 
 .matrix-corner,
 .matrix-row-label {
-  width: 320px;           /* comfortable, mostly-one-line label column */
+  width: 280px;   /* was 320px — most row labels here are short phrases */
 }
 
 .matrix-table thead th:not(.matrix-corner),
