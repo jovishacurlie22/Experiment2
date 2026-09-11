@@ -12,6 +12,15 @@ const CaptureSession = (() => {
     typeof window.MediaStreamTrackProcessor !== 'undefined' &&
     typeof window.VideoEncoder !== 'undefined';
 
+  // Chunked-upload tuning. We flush (and POST) whichever comes first:
+  // a time interval or an accumulated byte threshold. This keeps each
+  // upload small (well under typical body-size limits) and fast (well
+  // under the Cloudflare quick-tunnel's ~100s request timeout), instead
+  // of buffering a full 30-minute session and sending it as one request.
+  const CHUNK_FLUSH_INTERVAL_MS = 15000; // flush at least every 15s
+  const CHUNK_FLUSH_SIZE_BYTES = 4 * 1024 * 1024; // or every ~4MB, whichever first
+  const CHUNK_UPLOAD_MAX_RETRIES = 2;
+
   // Per-stream pipeline state
   function freshPipeline() {
     return {
@@ -20,10 +29,21 @@ const CaptureSession = (() => {
       reader: null,
       pumpDone: null,       // promise resolved when pump loop exits
       frameIndex: 0,
-      sidecar: [],          // [{frame_index, timestamp_us, capture_perf_ms, is_keyframe}]
-      encodedParts: [],     // raw Annex-B byte chunks, in order
+      sidecar: [],          // frames buffered since the last flush
+      encodedParts: [],     // raw Annex-B byte chunks buffered since the last flush
       firstFrameLogged: false,
       targetFps: null,
+
+      // Chunked-upload state (production mode only; test mode still
+      // buffers everything and downloads one file at the end).
+      chunked: false,
+      chunkIndex: 0,
+      pendingBytes: 0,
+      flushing: false,
+      flushTimer: null,
+      totalFrameCount: 0,
+      firstTimestampUs: null,
+      lastTimestampUs: null,
     };
   }
 
@@ -129,12 +149,20 @@ const CaptureSession = (() => {
 
     const pipeline = freshPipeline();
     pipeline.targetFps = framerate;
+    pipeline.chunked = !testModeEnabled();
 
     pipeline.encoder = new VideoEncoder({
       output: (chunk, metadata) => {
         const buf = new Uint8Array(chunk.byteLength);
         chunk.copyTo(buf);
         pipeline.encodedParts.push(buf);
+        pipeline.pendingBytes += buf.byteLength;
+
+        if (pipeline.chunked && !pipeline.flushing && pipeline.pendingBytes >= CHUNK_FLUSH_SIZE_BYTES) {
+          flushPipelineChunk(trackType, pipeline, false).catch((err) =>
+            console.error(`[capture_session] Size-triggered flush error (${trackType}):`, err)
+          );
+        }
       },
       error: (e) => console.error(`[capture_session] VideoEncoder error (${trackType}):`, e),
     });
@@ -175,7 +203,59 @@ const CaptureSession = (() => {
       }
     })();
 
+    if (pipeline.chunked) {
+      pipeline.flushTimer = setInterval(() => {
+        flushPipelineChunk(trackType, pipeline, false).catch((err) =>
+          console.error(`[capture_session] Periodic flush error (${trackType}):`, err)
+        );
+      }, CHUNK_FLUSH_INTERVAL_MS);
+    }
+
     return pipeline;
+  }
+
+  /**
+   * Drain whatever's currently buffered in the pipeline (encoded bytes +
+   * sidecar frames since the last flush) and POST it as one small chunk.
+   * Safe to call repeatedly during recording (isFinal=false) and once
+   * more after the encoder is closed (isFinal=true) to send the tail.
+   */
+  async function flushPipelineChunk(trackType, pipeline, isFinal) {
+    if (pipeline.flushing) return;
+    if (pipeline.encodedParts.length === 0 && pipeline.sidecar.length === 0 && !isFinal) return;
+    pipeline.flushing = true;
+
+    const partsToSend = pipeline.encodedParts;
+    const sidecarToSend = pipeline.sidecar;
+    pipeline.encodedParts = [];
+    pipeline.sidecar = [];
+    pipeline.pendingBytes = 0;
+
+    const chunkIndex = pipeline.chunkIndex++;
+
+    pipeline.totalFrameCount += sidecarToSend.length;
+    if (sidecarToSend.length > 0) {
+      if (pipeline.firstTimestampUs === null) {
+        pipeline.firstTimestampUs = sidecarToSend[0].timestamp_us;
+      }
+      pipeline.lastTimestampUs = sidecarToSend[sidecarToSend.length - 1].timestamp_us;
+    }
+
+    const rawBlob = new Blob(partsToSend, { type: 'video/H264' });
+    const sidecarChunkJson = {
+      session_key: currentSessionKey || '',
+      stream_source: trackType,
+      chunk_index: chunkIndex,
+      is_final: !!isFinal,
+      frame_count: sidecarToSend.length,
+      frames: sidecarToSend,
+    };
+
+    try {
+      await uploadRecordingChunk(trackType, chunkIndex, isFinal, rawBlob, sidecarChunkJson);
+    } finally {
+      pipeline.flushing = false;
+    }
   }
 
   async function stopPipeline(trackType, pipeline) {
@@ -185,11 +265,39 @@ const CaptureSession = (() => {
     try { await pipeline.reader.cancel(); } catch (e) { /* already closed */ }
     await pipeline.pumpDone;
 
+    if (pipeline.flushTimer) {
+      clearInterval(pipeline.flushTimer);
+      pipeline.flushTimer = null;
+    }
+
     if (pipeline.encoder && pipeline.encoder.state !== 'closed') {
       await pipeline.encoder.flush();
       pipeline.encoder.close();
     }
 
+    if (pipeline.chunked) {
+      // Send the tail end as the final chunk, then report summary stats
+      // only — the bytes themselves already went up incrementally.
+      await flushPipelineChunk(trackType, pipeline, true);
+
+      const durationS = (pipeline.firstTimestampUs !== null && pipeline.lastTimestampUs !== null)
+        ? (pipeline.lastTimestampUs - pipeline.firstTimestampUs) / 1e6
+        : 0;
+      const avgFps = durationS > 0 ? pipeline.totalFrameCount / durationS : pipeline.targetFps;
+
+      return {
+        chunked: true,
+        sidecarJson: {
+          session_key: currentSessionKey || '',
+          stream_source: trackType,
+          target_fps: pipeline.targetFps,
+          avg_fps: avgFps,
+          frame_count: pipeline.totalFrameCount,
+        },
+      };
+    }
+
+    // Test mode: unchanged full-buffer behaviour, local download only.
     const rawBlob = new Blob(pipeline.encodedParts, { type: 'video/H264' });
     const frameCount = pipeline.sidecar.length;
     const durationS = frameCount > 0
@@ -206,7 +314,7 @@ const CaptureSession = (() => {
       frames: pipeline.sidecar,
     };
 
-    return { rawBlob, sidecarJson };
+    return { chunked: false, rawBlob, sidecarJson };
   }
 
   /* ---------------------------------------------------------------- */
@@ -216,6 +324,48 @@ const CaptureSession = (() => {
   function getCookie(name) {
     const match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
     return match ? decodeURIComponent(match.pop()) : '';
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // Uploads one small chunk. Server-side, /api/upload-recording/ needs to
+  // branch on `chunk_index`/`is_final` in the POST body: append this
+  // chunk's video_raw bytes and sidecar frames to the session's
+  // in-progress files (by chunk_index order), and only kick off the
+  // existing mux/finalize step once is_final=true arrives.
+  async function uploadRecordingChunk(trackType, chunkIndex, isFinal, rawBlob, sidecarChunkJson) {
+    const formData = new FormData();
+    formData.append('video_raw', rawBlob, `${trackType}-${chunkIndex}.h264`);
+    formData.append('sidecar_json', JSON.stringify(sidecarChunkJson));
+    formData.append('stream_source', trackType);
+    formData.append('session_key', currentSessionKey || '');
+    formData.append('chunk_index', String(chunkIndex));
+    formData.append('is_final', isFinal ? 'true' : 'false');
+
+    for (let attempt = 0; attempt <= CHUNK_UPLOAD_MAX_RETRIES; attempt++) {
+      try {
+        const resp = await fetch('/api/upload-recording/', {
+          method: 'POST',
+          body: formData,
+          credentials: 'same-origin',
+          headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        });
+        if (resp.ok) {
+          console.log(
+            `[capture_session] Uploaded ${trackType} chunk ${chunkIndex}` +
+            `${isFinal ? ' (final)' : ''} (${rawBlob.size} bytes, ${sidecarChunkJson.frame_count} frames).`
+          );
+          return;
+        }
+        console.error(`[capture_session] Chunk upload failed for ${trackType} #${chunkIndex}: HTTP ${resp.status}`);
+      } catch (err) {
+        console.error(`[capture_session] Chunk upload error for ${trackType} #${chunkIndex}:`, err);
+      }
+      if (attempt < CHUNK_UPLOAD_MAX_RETRIES) await sleep(1000 * (attempt + 1));
+    }
+    console.error(`[capture_session] Giving up on ${trackType} chunk ${chunkIndex} after ${CHUNK_UPLOAD_MAX_RETRIES + 1} attempts.`);
   }
 
   async function uploadRecording(trackType, rawBlob, sidecarJson) {
@@ -315,7 +465,10 @@ const CaptureSession = (() => {
         avg_fps: result.sidecarJson.avg_fps,
       });
 
-      if (testModeEnabled()) {
+      if (result.chunked) {
+        // Bytes already went up incrementally during recording via
+        // flushPipelineChunk(); nothing left to upload here.
+      } else if (testModeEnabled()) {
         finalizeTestModeOutput(trackType, result.rawBlob, result.sidecarJson);
       } else {
         await uploadRecording(trackType, result.rawBlob, result.sidecarJson);
