@@ -39,7 +39,7 @@ const CaptureSession = (() => {
       chunked: false,
       chunkIndex: 0,
       pendingBytes: 0,
-      flushing: false,
+      flushChain: Promise.resolve(), // strictly serializes flushes; nothing is ever dropped
       flushTimer: null,
       totalFrameCount: 0,
       firstTimestampUs: null,
@@ -158,7 +158,7 @@ const CaptureSession = (() => {
         pipeline.encodedParts.push(buf);
         pipeline.pendingBytes += buf.byteLength;
 
-        if (pipeline.chunked && !pipeline.flushing && pipeline.pendingBytes >= CHUNK_FLUSH_SIZE_BYTES) {
+        if (pipeline.chunked && pipeline.pendingBytes >= CHUNK_FLUSH_SIZE_BYTES) {
           flushPipelineChunk(trackType, pipeline, false).catch((err) =>
             console.error(`[capture_session] Size-triggered flush error (${trackType}):`, err)
           );
@@ -219,44 +219,55 @@ const CaptureSession = (() => {
    * sidecar frames since the last flush) and POST it as one small chunk.
    * Safe to call repeatedly during recording (isFinal=false) and once
    * more after the encoder is closed (isFinal=true) to send the tail.
+   *
+   * Every call is chained onto pipeline.flushChain rather than gated by
+   * a simple "already flushing?" boolean. With a boolean guard, a call
+   * that arrives while a previous flush is still stuck on a slow/
+   * retrying request would just silently return and do nothing -- which
+   * is exactly how a final (isFinal=true) flush could vanish if it lands
+   * mid-stall, leaving is_final never sent to the server. Chaining
+   * guarantees every flush eventually runs, in order, none dropped.
    */
-  async function flushPipelineChunk(trackType, pipeline, isFinal) {
-    if (pipeline.flushing) return;
-    if (pipeline.encodedParts.length === 0 && pipeline.sidecar.length === 0 && !isFinal) return;
-    pipeline.flushing = true;
+  function flushPipelineChunk(trackType, pipeline, isFinal) {
+    const task = async () => {
+      if (pipeline.encodedParts.length === 0 && pipeline.sidecar.length === 0 && !isFinal) return;
 
-    const partsToSend = pipeline.encodedParts;
-    const sidecarToSend = pipeline.sidecar;
-    pipeline.encodedParts = [];
-    pipeline.sidecar = [];
-    pipeline.pendingBytes = 0;
+      const partsToSend = pipeline.encodedParts;
+      const sidecarToSend = pipeline.sidecar;
+      pipeline.encodedParts = [];
+      pipeline.sidecar = [];
+      pipeline.pendingBytes = 0;
 
-    const chunkIndex = pipeline.chunkIndex++;
+      const chunkIndex = pipeline.chunkIndex++;
 
-    pipeline.totalFrameCount += sidecarToSend.length;
-    if (sidecarToSend.length > 0) {
-      if (pipeline.firstTimestampUs === null) {
-        pipeline.firstTimestampUs = sidecarToSend[0].timestamp_us;
+      pipeline.totalFrameCount += sidecarToSend.length;
+      if (sidecarToSend.length > 0) {
+        if (pipeline.firstTimestampUs === null) {
+          pipeline.firstTimestampUs = sidecarToSend[0].timestamp_us;
+        }
+        pipeline.lastTimestampUs = sidecarToSend[sidecarToSend.length - 1].timestamp_us;
       }
-      pipeline.lastTimestampUs = sidecarToSend[sidecarToSend.length - 1].timestamp_us;
-    }
 
-    const rawBlob = new Blob(partsToSend, { type: 'video/H264' });
-    const sidecarChunkJson = {
-      session_key: currentSessionKey || '',
-      stream_source: trackType,
-      chunk_index: chunkIndex,
-      is_final: !!isFinal,
-      frame_count: sidecarToSend.length,
-      frames: sidecarToSend,
+      const rawBlob = new Blob(partsToSend, { type: 'video/H264' });
+      const sidecarChunkJson = {
+        session_key: currentSessionKey || '',
+        stream_source: trackType,
+        chunk_index: chunkIndex,
+        is_final: !!isFinal,
+        frame_count: sidecarToSend.length,
+        frames: sidecarToSend,
+      };
+
+      await uploadRecordingChunk(trackType, chunkIndex, isFinal, rawBlob, sidecarChunkJson);
     };
 
-    try {
-      await uploadRecordingChunk(trackType, chunkIndex, isFinal, rawBlob, sidecarChunkJson);
-    } finally {
-      pipeline.flushing = false;
-    }
+    // .then(task, task) means the next flush runs whether the previous
+    // one resolved or rejected -- one bad chunk can't wedge the queue.
+    const next = pipeline.flushChain.then(task, task);
+    pipeline.flushChain = next;
+    return next;
   }
+
 
   async function stopPipeline(trackType, pipeline) {
     if (!pipeline) return null;
