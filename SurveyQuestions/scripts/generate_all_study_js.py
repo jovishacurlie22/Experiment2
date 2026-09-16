@@ -438,8 +438,16 @@ def build_demographics():
             for name in section_order
         ],
     }
-    # Fixed order for both directions; only section order flips (handled by caller).
-    return module, section_order, review_notes
+    # Return section IDS (matching module["sections"][i]["id"]), not raw
+    # section names -- study_config.js's sectionOrder must key off the same
+    # ids study_schema.js uses. order_module_by_direction() (which HMS/
+    # MECAMH go through) always derives its section_order from sec["id"],
+    # never from raw names -- Demographics skips that function entirely
+    # (it's unscored/fixed-order) so it has to build the id list itself
+    # here instead, or main() ends up writing raw names like "Age" into
+    # sectionOrder.demographics instead of "demographics-age".
+    section_ids = [f"{module_id}-{slugify(name)}" for name in section_order]
+    return module, section_ids, review_notes
 
 
 def build_hms_content():
