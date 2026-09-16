@@ -102,11 +102,35 @@ def find_option_code(option_text, options):
                 return code
     norm_target = normalise(option_text)
     if len(norm_target) >= 3:
+        # Exact match first, across ALL options, before falling back to
+        # substring containment. A single containment pass in source order
+        # picks whichever option happens to come first in the list -- e.g.
+        # option_text "Agree" would match "Strongly agree" (contains
+        # "agree") before ever reaching the actual "Agree" option, silently
+        # resolving to the wrong code. Two passes fixes that without
+        # weakening the fuzzy fallback for genuinely partial phrasing.
+        for opt in options:
+            if norm_target == normalise(opt["label"]):
+                return opt["code"]
         for opt in options:
             norm_label = normalise(opt["label"])
-            if norm_target == norm_label or norm_target in norm_label or norm_label in norm_target:
+            if norm_target in norm_label or norm_label in norm_target:
                 return opt["code"]
     return None
+
+
+BOILERPLATE_PARENTHETICAL_RE = re.compile(r"^\([^)]*\)$")
+
+
+def _strip_boilerplate_lead(stem, parts):
+    """A leading part that's nothing but a parenthetical instruction --
+    "(Select all that apply)", "(Select all that apply.)" -- isn't a real
+    matrix row; it's an instruction that belongs on the stem. Splitting it
+    out as its own item duplicates it into the row list. Loop (not just
+    once) in case more than one such parenthetical stacks up."""
+    while parts and BOILERPLATE_PARENTHETICAL_RE.match(parts[0]):
+        stem = (stem + " " + parts.pop(0)).strip()
+    return stem, parts
 
 
 def split_matrix_stem_and_items(question_text):
@@ -131,51 +155,116 @@ def split_matrix_stem_and_items(question_text):
     # sentences (e.g. "...following: How often...? How often...?").
     # NOTE: "?" added to the lookbehind class below -- this is what was
     # missing, causing the Loneliness question to fail this split entirely.
+    # NOTE: "," was removed from the lookbehind class -- a comma inside a
+    # single row's own sentence (e.g. "In school, I am always seeking...")
+    # was being misread as a row boundary, snapping off "In school," as a
+    # bogus one-word row and corrupting the next row's text. Every other
+    # split in this workbook still separates cleanly on sentence-ending
+    # punctuation + capital letter without comma's help.
     stem_match = re.match(r"^(.*?[?:])\s+(.*)$", text, re.DOTALL)
     if stem_match:
         remainder = stem_match.group(2)
-        parts = re.split(r"(?<=[a-z\)\.,\?])\s+(?=[A-Z])", remainder)
+        parts = re.split(r"(?<=[a-z\)\.\?])\s+(?=[A-Z])", remainder)
         parts = [p.strip() for p in parts if p.strip()]
         if len(parts) >= 2:
-            return stem_match.group(1), parts
+            stem, parts = _strip_boilerplate_lead(stem_match.group(1), parts)
+            if len(parts) >= 2:
+                return stem, parts
 
     # Pattern 4: no "?"/":" divider at all (e.g. "Below are 8 statements...
     # Using the 1-7 scale... I lead a purposeful life. My social...").
     # Intro text may itself span more than one sentence, so use a declared
     # count ("8 statements") when present to know how many trailing
     # sentences are real rows vs. lead-in instructions.
-    parts = re.split(r"(?<=[a-z\)\.,])\s+(?=[A-Z])", text)
+    parts = re.split(r"(?<=[a-z\)\.])\s+(?=[A-Z])", text)
     parts = [p.strip() for p in parts if p.strip()]
     if len(parts) >= 2:
         count_match = re.search(r"\b(\d+)\s+(?:statements|items|questions)\b", text, re.IGNORECASE)
         if count_match:
             n = int(count_match.group(1))
             if 0 < n < len(parts):
-                return " ".join(parts[:-n]), parts[-n:]
-        return parts[0], parts[1:]
+                stem, items = " ".join(parts[:-n]), parts[-n:]
+                return _strip_boilerplate_lead(stem, items)
+        stem, items = parts[0], parts[1:]
+        return _strip_boilerplate_lead(stem, items)
 
     # Truly nothing to split on -- don't fabricate a duplicate; leave the
     # stem empty and flag for manual review instead.
     return "", [text]
 
+# Parses "Display if X is selected for Y" style clauses out of the Notes
+# column. Two properties of the source text this has to tolerate, found by
+# scanning every "selected for" occurrence across hms_survey.xlsx (11 of 59
+# such notes were failing to match at all under the original stricter
+# regex):
+#
+#   1. Smart-quote/spacing corruption around the parent phrase's opening
+#      quote -- several notes read literally `for”Are you aware...` with no
+#      space and a closing-style curly quote used where an opening one
+#      belongs (e.g. every Suicide Contagion follow-up). The original regex
+#      required `\s+` plus a straight-or-open curly quote there, so these
+#      clauses matched zero times.
+#   2. Multiple option phrases OR'd/AND'd together before "is selected for"
+#      (e.g. `"Yes" OR "Unsure" is selected for ...`, `"Somewhat Agree,"
+#      "Agree" or "Strongly Agree" is selected for ...`). The original
+#      regex could only ever capture the single quoted phrase immediately
+#      before "is selected for", silently dropping every earlier option.
+#
+# A clause with zero matches (or an incomplete option list) doesn't fail
+# loudly -- build_hms_content()'s caller falls back to `{"any": true}`,
+# which shows the follow-up as soon as the parent has ANY answer at all,
+# regardless of which option was actually picked. That fallback is exactly
+# what was surfacing as "I said No but still get the follow-up".
+QUOTE = r'["\u201c\u201d]'
 CLAUSE_RE = re.compile(
-    r'["\u201c]([^"\u201c\u201d]+)["\u201d]\s+is\s+(not\s+)?selected\s+for\s+'
-    r'["\u201c]([^"\u201c\u201d]+)["\u201d]',
+    r'(?P<options>(?:' + QUOTE + r'[^"\u201c\u201d]+' + QUOTE + r'\s*(?:,|OR|AND|or|and)?\s*)+)'
+    r'(?:is|are|was|were)\s+(?P<neg>not\s+)?selected\s+for\s*'
+    r'(?:' + QUOTE + r')(?P<parent>[^"\u201c\u201d]+)(?:' + QUOTE + r')?',
     re.IGNORECASE,
 )
+OPTION_RE = re.compile(r'["\u201c\u201d]([^"\u201c\u201d]+)["\u201c\u201d]')
+
+
+def extract_clauses(note):
+    """Returns a flat list of (option_text, negation_bool, parent_phrase)
+    tuples -- same shape the caller already expects from a plain
+    CLAUSE_RE.findall(), except a single "X OR Y is selected for Z" clause
+    now yields one tuple per option instead of only the last one."""
+    out = []
+    for m in CLAUSE_RE.finditer(note):
+        options = OPTION_RE.findall(m.group("options"))
+        neg = bool(m.group("neg"))
+        parent = m.group("parent").strip()
+        for opt in options:
+            out.append((opt, neg, parent))
+    return out
 
 # Excel workbook sheet-tab names are hard-capped at 31 characters, and both
 # hms_survey.xlsx and mecamhsurvey.xlsx have module sheets that got silently
 # truncated at save time -- the missing text is gone from the tab itself, so
 # it has to be restored here rather than recovered from any file. Keyed by
 # the exact (truncated) sheet name as it appears in the workbook today.
-# TODO: confirm "Mental Health Service Utilizati" -> exact intended full
-# title with the source questionnaire (guessing "Mental Health Service
-# Utilization" below -- please correct if the real title differs/continues).
+# Confirmed full titles (per Jovisha):
+#   "Mental Health Service Utilizati"  -> "Mental Health Service Utilization"
+#   "Academic Persistence, Retention"  -> "Academic Persistence, Retention and Competition"
+#   "Coping Responses and Climate Ch"  -> "Coping Responses and Climate Change"
 MODULE_TITLE_OVERRIDES = {
     "Mental Health Service Utilizati": "Mental Health Service Utilization",
+    "Academic Persistence, Retention": "Academic Persistence, Retention and Competition",
     "Coping Responses and Climate Ch": "Coping Responses and Climate Change",
 }
+
+
+def full_module_name(sheet_name):
+    """Resolve a possibly-truncated Excel sheet-tab name to its real title.
+    Used for BOTH the module id and the display title -- previously only
+    the title went through MODULE_TITLE_OVERRIDES while the id was slugified
+    straight from the truncated sheet_name, so a module could display the
+    correct full name while its id (and everything keyed off it --
+    activeModuleIds, sectionOrder, questionOrder in study_config.js) stayed
+    truncated/mismatched with the title."""
+    return MODULE_TITLE_OVERRIDES.get(sheet_name, sheet_name)
+
 
 
 def guess_type(question_text, options, is_matrix):
@@ -260,7 +349,7 @@ def build_hms_content():
         headers, rows = load_sheet_rows("../outputs/hms_question_score_reordered.xlsx", sheet_name)
         if not rows:
             continue
-        module_id = f"hms-{slugify(sheet_name)}"
+        module_id = f"hms-{slugify(full_module_name(sheet_name))}"
 
         qnum_to_id = {}
         qnum_to_row = {}
@@ -317,7 +406,7 @@ def build_hms_content():
             for q in questions:
                 if q["_role"] != "Follow-up Question" or not q["_parent_field"]:
                     continue
-                clauses = CLAUSE_RE.findall(q["_raw_skip"])
+                clauses = extract_clauses(q["_raw_skip"])
                 show_if_clauses = []
                 for parent_num in [p.strip() for p in q["_parent_field"].split(";") if p.strip()]:
                     parent_id = qnum_to_id.get(parent_num)
@@ -383,9 +472,41 @@ def build_hms_content():
                         root_num = rp
                     q["group"] = qnum_to_id.get(root_num, qid)
 
+        # Implicit ordering dependencies: a question that isn't a declared
+        # Follow-up (no skip-logic condition on it -- it always displays)
+        # can still be a *content* follow-up of an earlier matrix question
+        # in the same section, when its own matrix rows are literally a
+        # subset of that earlier question's rows -- e.g. a "the 2 problems
+        # below" recall question whose two rows restate two of the main
+        # matrix's nine. The source Notes column has no way to express this
+        # (it isn't a display condition -- the recall question always shows),
+        # so cognitive-load reordering has no signal that it must trail the
+        # question it's quoting: in "descending" direction it was sorting
+        # this question by its own (higher) score, ahead of the very
+        # question its own wording depends on having just been shown.
+        # Detected generically off matrixItems already parsed above, not
+        # hardcoded to any specific question pair -- see order_module_by_
+        # direction() for how this gets used to pin delivery order.
+        for sec_name, questions in sections_by_name.items():
+            for i, q in enumerate(questions):
+                if q["_role"] == "Follow-up Question" or q.get("_parent_ids") or "matrixItems" not in q:
+                    continue
+                q_items = {normalise(it["label"]) for it in q["matrixItems"]}
+                if not q_items:
+                    continue
+                for earlier in questions[:i]:
+                    if "matrixItems" not in earlier:
+                        continue
+                    earlier_items = {normalise(it["label"]) for it in earlier["matrixItems"]}
+                    if q_items < earlier_items:
+                        q["_implicit_after"] = earlier["id"]
+                        review_notes.append((q["id"], "implicit_order",
+                            f"rows are a subset of {earlier['id']}'s -- pinned to follow it in delivery order"))
+                        break
+
         modules.append({
             "id": module_id,
-            "title": MODULE_TITLE_OVERRIDES.get(sheet_name, sheet_name),
+            "title": full_module_name(sheet_name),
             "sections": [
                 {"id": f"{module_id}-{slugify(name)}", "title": name, "questions": sections_by_name[name]}
                 for name in section_order if sections_by_name[name]
@@ -407,7 +528,7 @@ def build_mecamh_content():
         headers, rows = load_sheet_rows(path, sheet_name)
         if not rows:
             continue
-        module_id = f"mecamh-{slugify(sheet_name)}"
+        module_id = f"mecamh-{slugify(full_module_name(sheet_name))}"
 
         section_order = []
         sections_by_name = {}
@@ -440,7 +561,7 @@ def build_mecamh_content():
 
         modules.append({
             "id": module_id,
-            "title": MODULE_TITLE_OVERRIDES.get(sheet_name, sheet_name),
+            "title": full_module_name(sheet_name),
             "sections": [
                 {"id": f"{module_id}-{slugify(name)}", "title": name, "questions": sections_by_name[name]}
                 for name in section_order if sections_by_name[name]
@@ -500,6 +621,29 @@ def order_module_by_direction(module, direction):
             for pid in q.get("_parent_ids", []) or []:
                 if pid in id_to_q:
                     union(q["id"], pid)
+        # Implicit-order links (see build_hms_content) move as part of the
+        # same block as their declared-parent siblings, but must still land
+        # AFTER any real skip-logic follow-ups within that block -- tier()
+        # below handles that; this union just keeps them together.
+        for q in qs:
+            implicit_pid = q.get("_implicit_after")
+            if implicit_pid and implicit_pid in id_to_q:
+                union(q["id"], implicit_pid)
+
+        # Three tiers, not two: the true anchor (0), its declared skip-logic
+        # follow-ups (1), then anything only implicitly pinned after it (2).
+        # Collapsing tiers 0 and 2 together (as a plain has-a-parent? check
+        # would) let an implicit-after question tie-break ahead of a real
+        # follow-up under a stable sort, since it enters the group before
+        # the follow-up is even discovered -- that's exactly how the PHQ-2
+        # recall question was landing between the PHQ-9 matrix and its own
+        # difficulty follow-up instead of after both.
+        def tier(q):
+            if q.get("_role", "Independent Question") == "Follow-up Question":
+                return 1
+            if q.get("_implicit_after"):
+                return 2
+            return 0
 
         groups = {}
         order = []
@@ -510,12 +654,12 @@ def order_module_by_direction(module, direction):
                 order.append(key)
             groups[key].append(q)
         for key in groups:
-            groups[key].sort(key=lambda q: 0 if q.get("_role", "Independent Question") != "Follow-up Question" else 1)
+            groups[key].sort(key=tier)
         scored = []
         for key in order:
             members = groups[key]
             anchor_score = next(
-                (q["_score"] for q in members if q.get("_role", "Independent Question") != "Follow-up Question"),
+                (q["_score"] for q in members if tier(q) == 0),
                 members[0]["_score"],
             )
             scored.append((sign * anchor_score, key))
