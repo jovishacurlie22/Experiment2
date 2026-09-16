@@ -306,6 +306,11 @@
       // Attaches consent_given_at to the StudySession created at login,
       // keyed by session_key -- see log_consent in views.py.
       StudyAPI.logConsent(state.sessionKey, state.consentGivenAt);
+      // Recording (webcam/screen + RealEye gaze) starts only now that consent
+      // has actually been given -- previously this fired at login, before the
+      // participant had seen or agreed to the consent screen.
+      CaptureSession.initRealEye();
+      CaptureSession.start(state.sessionKey);
       goTo("instructions");
     });
   }
@@ -363,8 +368,6 @@
           // boot now (see bottom of file), not here. Left in case boot
           // ever runs before sessionStorage is writable for some reason.
           ensureTimerStarted();
-          CaptureSession.initRealEye();
-          CaptureSession.start(session_key);
           goTo("consent");
         })
         .catch((loginErr) => {

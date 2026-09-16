@@ -38,6 +38,30 @@ def parse_client_dt(value):
         return None
     return parse_datetime(value)
 
+def to_epoch_ms(dt):
+    """Convert an aware/naive datetime to Unix epoch milliseconds."""
+    if dt is None:
+        return None
+    return int(dt.timestamp() * 1000)
+
+
+def resolved_epoch_ms(payload, client_dt=None):
+    """Best available epoch_ms for an ActivityEvent. An explicit epoch_ms
+    in the client payload (already unix ms, e.g. from Date.now()) wins,
+    since it's captured at the moment the event actually happened on the
+    client. Falls back to the parsed client_timestamp, then to server
+    receipt time -- so epoch_ms is never left null, matching the beacon
+    path's precision when the client provides it and degrading gracefully
+    when it doesn't."""
+    explicit = payload.get("epoch_ms")
+    if explicit is not None:
+        try:
+            return int(explicit)
+        except (TypeError, ValueError):
+            pass
+    if client_dt is not None:
+        return to_epoch_ms(client_dt)
+    return to_epoch_ms(timezone.now())
 
 def get_session_or_error(payload):
     """Resolve a StudySession from a session_key in the request payload.
@@ -93,10 +117,12 @@ def login_view(request):
         user_agent=request.META.get("HTTP_USER_AGENT", ""),
         ip_address=client_ip(request),
     )
+    client_dt = parse_client_dt(payload.get("client_timestamp"))
     ActivityEvent.objects.create(
         session=session,
         event_type="session_started",
-        client_timestamp=parse_client_dt(payload.get("client_timestamp")),
+        client_timestamp=client_dt,
+        epoch_ms=resolved_epoch_ms(payload, client_dt),
     )
     request._study_session = session
 
@@ -128,6 +154,7 @@ def log_consent(request):
         session=session,
         event_type="consent_given",
         client_timestamp=consent_given_at,
+        epoch_ms=resolved_epoch_ms(payload, consent_given_at),
         detail={
             "ip_address": client_ip(request),
             "user_agent": request.META.get("HTTP_USER_AGENT", ""),
@@ -153,12 +180,14 @@ def log_event(request):
     if event_type not in valid_types:
         event_type = "other"
 
+    client_dt = parse_client_dt(payload.get("client_timestamp"))
     ActivityEvent.objects.create(
         session=session,
         event_type=event_type,
         screen_name=payload.get("screen_name", "") or "",
         detail=payload.get("detail") or {},
-        client_timestamp=parse_client_dt(payload.get("client_timestamp")),
+        client_timestamp=client_dt,
+        epoch_ms=resolved_epoch_ms(payload, client_dt),
         request_path=payload.get("source_path", "") or "",
     )
     return JsonResponse({"ok": True})
@@ -225,8 +254,14 @@ def upload_chunk(request):
     )
 
     if is_last:
+        epoch_raw = request.POST.get("epoch_ms")
+        try:
+            epoch_ms_val = int(epoch_raw) if epoch_raw else to_epoch_ms(timezone.now())
+        except (TypeError, ValueError):
+            epoch_ms_val = to_epoch_ms(timezone.now())
         ActivityEvent.objects.create(
-            session=session, event_type=f"{stream_source}_recording_stopped"
+            session=session, event_type=f"{stream_source}_recording_stopped",
+            epoch_ms=epoch_ms_val,
         )
         finalize_recording(session, stream_source)
 
@@ -254,12 +289,15 @@ def finish_session(request):
     session.end_reason = end_reason
     session.save(update_fields=["ended_at", "end_reason"])
 
+    client_dt = parse_client_dt(payload.get("client_timestamp"))
     ActivityEvent.objects.create(
         session=session,
         event_type="session_ended",
         detail={"end_reason": end_reason},
-        client_timestamp=parse_client_dt(payload.get("client_timestamp")),
+        client_timestamp=client_dt,
+        epoch_ms=resolved_epoch_ms(payload, client_dt),
     )
+    finalize_all_recordings(session)
     finalize_all_recordings(session)
 
     return JsonResponse({"ok": True})
@@ -422,7 +460,7 @@ def log_activity_event(request):
         session=session,
         session_key=payload.get("session_key", ""),
         event_type=payload.get("event_type", "other"),
-        epoch_ms=payload.get("epoch_ms"),
+        epoch_ms=resolved_epoch_ms(payload),
         stream_source=payload.get("stream_source"),
         meta=payload.get("meta") or {},
     )
