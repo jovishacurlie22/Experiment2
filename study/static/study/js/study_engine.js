@@ -197,6 +197,18 @@ const StudyEngine = (() => {
   function init(allModules, activeModuleIds, answerGetter) {
     const byId = new Map((allModules || []).map((m) => [m.id, m]));
     modules = (activeModuleIds || []).map((id) => byId.get(id)).filter(Boolean);
+    // .filter(Boolean) above silently drops any id in activeModuleIds that
+    // doesn't resolve to a real module -- e.g. a stale study_schema.js
+    // served without a matching study_config.js (or vice versa) after a
+    // collectstatic run that didn't use --clear. That's exactly the kind
+    // of failure that looks like "demographics just isn't there, the study
+    // starts on module 2 of 9" with nothing in the UI to explain why. Warn
+    // loudly instead of failing silently, so it shows up in the console
+    // the moment it happens rather than only being noticed downstream.
+    const missing = (activeModuleIds || []).filter((id) => !byId.has(id));
+    if (missing.length > 0) {
+      console.warn("[StudyEngine] activeModuleIds referenced module id(s) not found in allModules -- dropped:", missing);
+    }
     getAnswer = typeof answerGetter === "function" ? answerGetter : () => undefined;
     cursor = { m: 0, s: 0, q: 0 };
   }
