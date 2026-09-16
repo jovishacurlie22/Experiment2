@@ -1163,6 +1163,38 @@ def _question_similarity(a, b):
     return 0.55 * seq + 0.45 * jaccard
 
 
+def _quoted_strings_excluding_option_values(text):
+    """Like _quoted_strings, but drops quoted spans that are themselves the
+    OPTION side of a "... is selected for ..." clause (e.g. the drug-name
+    option text in `"1=Psychostimulants (...)" is selected for "..."`).
+
+    Without this, a long option value that happens to also appear inside a
+    completely different, unrelated question's own wording (common with
+    HMS's medication-name options, which several questions quote back in
+    full) can itself win the containment/fuzzy match below and get treated
+    as if it were a parent-question reference -- linking the follow-up to
+    the wrong parent instead of (or in addition to) the real one named
+    right after "selected for". Confirmed this was happening for the
+    stimulant-misuse follow-ups (Q37-39, wrongly linked to Q32 -- the
+    question that happens to repeat the same drug-name text -- instead of
+    the real parent Q31) and the ADHD-diagnosis-timing follow-up (Q14).
+    """
+    text = str(text)
+    if not text.strip() or text.casefold() == "nan":
+        return []
+    quote_class = r"[\"'\u2018\u2019\u201c\u201d]"
+    out = []
+    for m in re.finditer(quote_class + r"([^\"'\u2018\u2019\u201c\u201d]+)" + quote_class, text):
+        value = m.group(1).strip()
+        if not value:
+            continue
+        tail = text[m.end():m.end() + 40]
+        if re.match(r"\s*(?:is|are|was|were)\s+(?:not\s+)?selected\s+for\b", tail, re.IGNORECASE):
+            continue  # this quoted span is an OPTION value, not a parent reference
+        out.append(value)
+    return out
+
+
 def _find_parent_question_indices(skip_text, question_texts, current_idx=None):
     """Return all question indices explicitly referenced by display logic.
 
@@ -1184,7 +1216,7 @@ def _find_parent_question_indices(skip_text, question_texts, current_idx=None):
         if current_idx is not None and current_idx > 0:
             return [current_idx - 1]
 
-    raw_candidates = _quoted_strings(text)
+    raw_candidates = _quoted_strings_excluding_option_values(text)
     candidates = []
     for raw in raw_candidates:
         n = _normalise_question_text(raw)

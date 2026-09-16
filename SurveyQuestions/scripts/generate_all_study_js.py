@@ -26,6 +26,7 @@ there's only ever one row per section here anyway).
 """
 import json
 import re
+from difflib import SequenceMatcher
 
 import openpyxl
 
@@ -53,6 +54,32 @@ def normalise(text):
     text = str(text).replace("\u2018", "'").replace("\u2019", "'")
     text = text.replace("\u201c", '"').replace("\u201d", '"')
     return re.sub(r"[^a-z0-9]+", " ", text.casefold()).strip()
+
+
+def phrase_matches_parent(phrase, parent_text):
+    """Validates a clause's quoted parent-phrase against the ACTUAL text of
+    the parent question already identified via Parent Question #. Strict
+    substring containment is tried first (cheap, zero false-positive risk);
+    when that fails, falls back to the same conservative fuzzy-match
+    tolerance question_score.py's own _find_parent_question_indices()
+    already uses for its broader search (SequenceMatcher ratio >= 0.70 and
+    word-overlap >= 0.55) -- ordinary paraphrase drift between how a Notes
+    cell describes a question and the question's own wording (typos,
+    singular/plural, an added qualifier word, a reworded clause at the end)
+    shouldn't sink an otherwise-correct, already-narrowed clause match.
+    Since this only validates a SPECIFIC candidate already resolved by
+    Parent Question #, not a search across the whole module, the risk of a
+    false positive here is much lower than in that broader search."""
+    norm_phrase = normalise(phrase)
+    norm_parent = normalise(parent_text)
+    if len(norm_phrase) >= 15 and (norm_phrase in norm_parent or norm_parent in norm_phrase):
+        return True
+    if not norm_phrase or not norm_parent:
+        return False
+    ratio = SequenceMatcher(None, norm_phrase, norm_parent).ratio()
+    phrase_tokens = set(norm_phrase.split())
+    overlap = len(phrase_tokens & set(norm_parent.split())) / max(1, len(phrase_tokens))
+    return ratio >= 0.70 and overlap >= 0.55
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +143,23 @@ def find_option_code(option_text, options):
             norm_label = normalise(opt["label"])
             if norm_target in norm_label or norm_label in norm_target:
                 return opt["code"]
+        # Fuzzy fallback: pick the BEST-scoring option (argmax across the
+        # whole list, not first-match) so paraphrase drift in how the Notes
+        # column restates an option's wording doesn't sink an otherwise-
+        # clear match. Same tolerance phrase_matches_parent() applies to
+        # parent-question text, applied here to option labels. Argmax
+        # instead of first-match-past-threshold avoids the same
+        # order-dependence bug the exact-match pass above was fixed for.
+        best_code, best_ratio = None, 0.0
+        target_tokens = set(norm_target.split())
+        for opt in options:
+            norm_label = normalise(opt["label"])
+            ratio = SequenceMatcher(None, norm_target, norm_label).ratio()
+            overlap = len(target_tokens & set(norm_label.split())) / max(1, len(target_tokens))
+            if ratio >= 0.6 and overlap >= 0.5 and ratio > best_ratio:
+                best_code, best_ratio = opt["code"], ratio
+        if best_code is not None:
+            return best_code
     return None
 
 
@@ -217,9 +261,18 @@ def split_matrix_stem_and_items(question_text):
 # what was surfacing as "I said No but still get the follow-up".
 QUOTE = r'["\u201c\u201d]'
 CLAUSE_RE = re.compile(
-    r'(?P<options>(?:' + QUOTE + r'[^"\u201c\u201d]+' + QUOTE + r'\s*(?:,|OR|AND|or|and)?\s*)+)'
+    r'(?P<options>(?:' + QUOTE + r'[^"\u201c\u201d]+' + QUOTE + r'\s*(?:,\s*)?(?:(?:or|and)\s+)?)+)'
     r'(?:is|are|was|were)\s+(?P<neg>not\s+)?selected\s+for\s*'
     r'(?:' + QUOTE + r')(?P<parent>[^"\u201c\u201d]+)(?:' + QUOTE + r')?',
+    re.IGNORECASE,
+)
+# A second, rarer word order: "Display if selected X, Y, or Z for W" -- the
+# verb comes BEFORE the option list instead of after it. Same option-list
+# and parent-phrase grammar, just reordered, so reuses the same building
+# blocks rather than being a one-off special case.
+CLAUSE_RE_VERB_FIRST = re.compile(
+    r'(?P<neg>not\s+)?selected\s+(?P<options>(?:' + QUOTE + r'[^"\u201c\u201d]+' + QUOTE + r'\s*(?:,\s*)?(?:(?:or|and)\s+)?)+)'
+    r'for\s*(?:' + QUOTE + r')(?P<parent>[^"\u201c\u201d]+)(?:' + QUOTE + r')?',
     re.IGNORECASE,
 )
 OPTION_RE = re.compile(r'["\u201c\u201d]([^"\u201c\u201d]+)["\u201c\u201d]')
@@ -231,13 +284,64 @@ def extract_clauses(note):
     CLAUSE_RE.findall(), except a single "X OR Y is selected for Z" clause
     now yields one tuple per option instead of only the last one."""
     out = []
-    for m in CLAUSE_RE.finditer(note):
-        options = OPTION_RE.findall(m.group("options"))
-        neg = bool(m.group("neg"))
-        parent = m.group("parent").strip()
-        for opt in options:
-            out.append((opt, neg, parent))
+    for rex in (CLAUSE_RE, CLAUSE_RE_VERB_FIRST):
+        for m in rex.finditer(note):
+            options = OPTION_RE.findall(m.group("options"))
+            neg = bool(m.group("neg"))
+            parent = m.group("parent").strip()
+            for opt in options:
+                out.append((opt, neg, parent))
     return out
+
+
+# A second clause grammar entirely: a direct value check against the
+# PARENT's own answer ("'X' is not 0=0.", "'X' is not 'No, Never.'"),
+# rather than "which option was selected for X". Two forms depending on
+# whether the compared value is written as a response CODE or as a quoted
+# LABEL -- kept as separate patterns since a shared one would have to guess
+# which side of "is (not)" is the code and which is the label.
+VALUE_CLAUSE_CODE_RE = re.compile(
+    QUOTE + r'([^"\u201c\u201d]+)' + QUOTE + r'\s+is\s+(not\s+)?(\d+)\s*=',
+    re.IGNORECASE,
+)
+VALUE_CLAUSE_LABEL_RE = re.compile(
+    QUOTE + r'([^"\u201c\u201d]+)' + QUOTE + r'\s+is\s+(not\s+)?' + QUOTE + r'([^"\u201c\u201d]+)' + QUOTE,
+    re.IGNORECASE,
+)
+
+
+def extract_value_clauses(note):
+    """Returns a list of (parent_phrase, negation_bool, value, kind) tuples,
+    kind being "code" (value is already a response code, e.g. "0") or
+    "label" (value is a response label needing find_option_code() same as
+    an ordinary clause option)."""
+    out = []
+    for m in VALUE_CLAUSE_CODE_RE.finditer(note):
+        out.append((m.group(1).strip(), bool(m.group(2)), m.group(3), "code"))
+    for m in VALUE_CLAUSE_LABEL_RE.finditer(note):
+        out.append((m.group(1).strip(), bool(m.group(2)), m.group(3).strip(), "label"))
+    return out
+
+
+# A third grammar: no option or value at all -- "Display if previous
+# question is displayed" or `Display only if "X" is displayed.` This
+# references another question's own VISIBILITY, not its answer, so it's
+# resolved differently downstream (inheriting that question's showIf
+# wholesale) rather than turned into an equals/in/includes-style condition.
+DISPLAYED_RE = re.compile(QUOTE + r'([^"\u201c\u201d]+)' + QUOTE + r'\s+is\s+displayed', re.IGNORECASE)
+PREVIOUS_QUESTION_DISPLAYED_RE = re.compile(r'previous\s+question\s+is\s+displayed', re.IGNORECASE)
+
+# A fourth grammar, specific to matrix parents: "respondent selects
+# anything other than 'X' for any statement in 'PARENT'". This is a
+# per-ROW condition on a matrix question (any one of its items differs
+# from X), not a whole-question condition -- corresponds to
+# matrixAnyNotEquals in study_engine.js's evalCondition, which reads the
+# matrix answer object per-row rather than as a single flat value.
+MATRIX_ANY_CLAUSE_RE = re.compile(
+    r'anything\s+other\s+than\s+' + QUOTE + r'([^"\u201c\u201d]+)' + QUOTE +
+    r'\s+for\s+any\s+statement\s+in\s+' + QUOTE + r'([^"\u201c\u201d]+)' + QUOTE,
+    re.IGNORECASE,
+)
 
 # Excel workbook sheet-tab names are hard-capped at 31 characters, and both
 # hms_survey.xlsx and mecamhsurvey.xlsx have module sheets that got silently
@@ -402,13 +506,29 @@ def build_hms_content():
             sections_by_name[sec_name].append(question)
 
         # showIf resolution, now operator-aware based on the PARENT's type.
+        # id_to_qobj is built ONCE, up front -- it holds the same object
+        # references that get mutated (q["showIf"] set) as this loop runs,
+        # so a later question inheriting an earlier one's showIf (see the
+        # "is displayed" handling below) always sees that earlier
+        # question's up-to-date, already-resolved condition, not a stale
+        # snapshot -- as long as the parent is processed earlier in
+        # document order, which every case seen in this workbook is.
+        id_to_qobj = {qq["id"]: qq for qs in sections_by_name.values() for qq in qs}
         for sec_name, questions in sections_by_name.items():
             for q in questions:
                 if q["_role"] != "Follow-up Question" or not q["_parent_field"]:
                     continue
                 clauses = extract_clauses(q["_raw_skip"])
+                value_clauses = extract_value_clauses(q["_raw_skip"])
+                matrix_any_clauses = [
+                    (m.group(1).strip(), m.group(2).strip())
+                    for m in MATRIX_ANY_CLAUSE_RE.finditer(q["_raw_skip"])
+                ]
+                displayed_match = DISPLAYED_RE.search(q["_raw_skip"])
+                previous_displayed = bool(PREVIOUS_QUESTION_DISPLAYED_RE.search(q["_raw_skip"]))
+                parent_nums = [p.strip() for p in q["_parent_field"].split(";") if p.strip()]
                 show_if_clauses = []
-                for parent_num in [p.strip() for p in q["_parent_field"].split(";") if p.strip()]:
+                for parent_num in parent_nums:
                     parent_id = qnum_to_id.get(parent_num)
                     if parent_id is None:
                         review_notes.append((q["id"], "unresolved_parent", f"parent Q#{parent_num} not in this module"))
@@ -420,12 +540,65 @@ def build_hms_content():
 
                     matched = []
                     for option_text, negation, parent_phrase in clauses:
-                        norm_phrase = normalise(parent_phrase)
-                        norm_parent = normalise(parent_text)
-                        if len(norm_phrase) >= 15 and (norm_phrase in norm_parent or norm_parent in norm_phrase):
+                        if phrase_matches_parent(parent_phrase, parent_text):
                             matched.append((option_text, bool(negation)))
 
                     if not matched:
+                        # "Previous question is displayed" doesn't name a
+                        # phrase to fuzzy-match at all -- it only makes
+                        # sense when there's exactly one parent, and that
+                        # parent IS "the previous question" by construction
+                        # (Parent Question # was resolved to it), so apply
+                        # it directly rather than searching for a quote.
+                        if previous_displayed and len(parent_nums) == 1:
+                            parent_q = id_to_qobj.get(parent_id)
+                            if parent_q is not None:
+                                inherited = parent_q.get("showIf")
+                                if isinstance(inherited, list):
+                                    show_if_clauses.extend(inherited)
+                                elif inherited:
+                                    show_if_clauses.append(inherited)
+                                continue  # resolved either way -- inherited condition(s), or parent (and so this) is unconditional
+                        # Named "'X' is displayed" -- confirm the named
+                        # phrase is actually THIS parent before inheriting
+                        # its condition (a note can name a different
+                        # question here than the one this parent_num
+                        # points to, when there are multiple parents).
+                        if displayed_match and phrase_matches_parent(displayed_match.group(1), parent_text):
+                            parent_q = id_to_qobj.get(parent_id)
+                            if parent_q is not None:
+                                inherited = parent_q.get("showIf")
+                                if isinstance(inherited, list):
+                                    show_if_clauses.extend(inherited)
+                                elif inherited:
+                                    show_if_clauses.append(inherited)
+                                continue
+                        # Direct value comparison against the parent's own
+                        # answer ("'X' is not 0=0.", "'X' is not 'Label.'")
+                        # rather than an option-selection clause.
+                        value_matched = [
+                            (neg, val, kind) for phrase, neg, val, kind in value_clauses
+                            if phrase_matches_parent(phrase, parent_text)
+                        ]
+                        if value_matched:
+                            neg, val, kind = value_matched[0]
+                            code = val if kind == "code" else find_option_code(val, parent_options)
+                            if code is not None:
+                                show_if_clauses.append({"questionId": parent_id, "notEquals" if neg else "equals": code})
+                                continue
+                        # "Anything other than X for any statement in
+                        # PARENT" -- a per-row matrix condition, only
+                        # meaningful when the parent actually IS a matrix.
+                        if parent_type == "matrix":
+                            matrix_any_matched = [
+                                option_text for option_text, phrase in matrix_any_clauses
+                                if phrase_matches_parent(phrase, parent_text)
+                            ]
+                            if matrix_any_matched:
+                                code = find_option_code(matrix_any_matched[0], parent_options)
+                                if code is not None:
+                                    show_if_clauses.append({"questionId": parent_id, "matrixAnyNotEquals": code})
+                                    continue
                         review_notes.append((q["id"], "needs_review", f"no clause matched parent Q#{parent_num}"))
                         show_if_clauses.append({"questionId": parent_id, "any": True})
                         continue
@@ -456,6 +629,22 @@ def build_hms_content():
                     else:
                         key = "notIn" if negated else "in"
                     show_if_clauses.append({"questionId": parent_id, key: codes})
+
+                # Dedupe: "is displayed" inheritance and a value/option
+                # clause can independently arrive at the identical
+                # condition for different declared parents (Q25 does this
+                # for exactly this reason -- inheriting Q24's condition and
+                # separately deriving the same condition against Q23,
+                # Q24's own parent). Harmless if left in (shouldShow ORs
+                # the list), but redundant.
+                deduped = []
+                seen_clauses = set()
+                for c in show_if_clauses:
+                    key = tuple(sorted((k, tuple(v) if isinstance(v, list) else v) for k, v in c.items()))
+                    if key not in seen_clauses:
+                        seen_clauses.add(key)
+                        deduped.append(c)
+                show_if_clauses = deduped
 
                 q["showIf"] = show_if_clauses if len(show_if_clauses) > 1 else (show_if_clauses[0] if show_if_clauses else None)
                 if q["showIf"]:

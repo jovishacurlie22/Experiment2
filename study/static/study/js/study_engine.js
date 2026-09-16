@@ -92,6 +92,22 @@ const StudyEngine = (() => {
     if ("excludes" in cond) return Array.isArray(val) && !val.includes(cond.excludes);
     if ("includesAny" in cond) return Array.isArray(val) && cond.includesAny.some((c) => val.includes(c));
     if ("excludesAny" in cond) return Array.isArray(val) && !cond.excludesAny.some((c) => val.includes(c));
+    // Matrix parents store their answer as an object keyed by item id
+    // (see app.js renderMatrix/state.answers), one option-code value per
+    // row — not a flat scalar or an array like every condition above.
+    // "matrixAnyNotEquals" is true as soon as ANY row's value differs from
+    // the given code, regardless of whether every row has been answered
+    // yet (e.g. a PHQ-9 "how difficult has this been" follow-up that
+    // should appear the moment any one symptom is rated above "Not at
+    // all", not only once all nine rows are answered).
+    if ("matrixAnyNotEquals" in cond) {
+      return (
+        val !== null &&
+        typeof val === "object" &&
+        !Array.isArray(val) &&
+        Object.values(val).some((v) => v !== cond.matrixAnyNotEquals)
+      );
+    }
     // Unrecognized condition shape — fail safe by showing the item rather
     // than silently hiding study content.
     console.warn("[StudyEngine] Unrecognized condition shape:", cond);
