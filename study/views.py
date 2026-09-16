@@ -20,7 +20,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from .models import ActivityEvent, Participant, QuestionResponse, Recording, RecordingChunk, StudySession
-from .utils import finalize_all_recordings, finalize_recording
+from .utils import finalize_all_recordings, finalize_recording, resolved_epoch_ms, to_epoch_ms
 from .recording_ingest import mux_and_lock_cfr
 
 
@@ -50,10 +50,10 @@ def resolved_epoch_ms(payload, client_dt=None):
     in the client payload (already unix ms, e.g. from Date.now()) wins,
     since it's captured at the moment the event actually happened on the
     client. Falls back to the parsed client_timestamp, then to server
-    receipt time -- so epoch_ms is never left null, matching the beacon
-    path's precision when the client provides it and degrading gracefully
-    when it doesn't."""
-    explicit = payload.get("epoch_ms")
+    receipt time -- so epoch_ms is never left null. payload may be an
+    empty dict for server-only events (e.g. ServerHitLoggingMiddleware)
+    that have no client-sent data to prefer."""
+    explicit = (payload or {}).get("epoch_ms")
     if explicit is not None:
         try:
             return int(explicit)

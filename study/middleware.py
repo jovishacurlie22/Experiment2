@@ -9,7 +9,10 @@ resolve a session (bad/missing session_key) simply don't get a hit
 logged here — the view's own error response is what matters for those.
 """
 
+from django.utils import timezone
+
 from .models import ActivityEvent
+from .utils import to_epoch_ms
 
 # Avoid double-logging: log_event already *is* an explicit event; logging
 # a server_hit for hitting the log-event endpoint itself is just noise.
@@ -32,6 +35,12 @@ class ServerHitLoggingMiddleware:
                         event_type="server_hit",
                         request_path=request.path,
                         detail={"method": request.method, "status_code": response.status_code},
+                        # No client payload exists at this layer -- this is
+                        # purely server receipt time, not a client-clock
+                        # timestamp. Useful for sequencing server load, but
+                        # not the same sampling axis as client-emitted
+                        # events when you build the timesync manifest later.
+                        epoch_ms=to_epoch_ms(timezone.now()),
                     )
                 except Exception:
                     # Never let logging failures break the actual response.
