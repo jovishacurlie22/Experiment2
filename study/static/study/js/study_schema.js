@@ -2,7 +2,7 @@
    the HMS scoring pipeline output, and MECAMH_question_score_reordered.xlsx.
    Do not hand-edit content here except to resolve a `// TODO-VERIFY` comment --
    regenerate from the workbooks instead for any other change.
-   27 TODO-VERIFY comment(s) below need a human check before this
+   5 TODO-VERIFY comment(s) below need a human check before this
    schema is used with real participants. Ordering lives in study_config.js,
    not here. */
 
@@ -19,7 +19,7 @@ window.STUDY_MODULES = [
         {
           id: "demographics-q1",
           type: "numeric",
-          stem: "How old are you?",
+          stem: "How old were you on your last birthday?",
           options: [],
         },
         ]
@@ -35,7 +35,7 @@ window.STUDY_MODULES = [
           options: [
             { value: "1", label: "Female" },
             { value: "2", label: "Male" },
-            { value: "3", label: "Other", otherFreeText: true },
+            { value: "3", label: "Other (specify)", otherFreeText: true },
             { value: "4", label: "Prefer not to say" },
           ],
         },
@@ -106,156 +106,736 @@ window.STUDY_MODULES = [
     ]
   },
   {
-    id: "hms-mental-health-status",
+    id: "hms-overall-health",
     kind: "standard",
-    title: "Mental Health Status",
+    title: "Overall Health",
     sections: [
       {
-        id: "hms-mental-health-status-positive-mental-health",
-        title: "Positive mental health",
+        id: "hms-overall-health-nutrition",
+        title: "Nutrition",
         questions: [
         {
-          id: "hms-mental-health-status-q1",
+          id: "hms-overall-health-q15",
+          type: "binary",
+          stem: "Do the following eating practices apply to you?: I eat raw food (most of or all of the time).",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        {
+          id: "hms-overall-health-q11",
+          type: "binary",
+          stem: "Do the following eating practices apply to you?: I am vegetarian.",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        {
+          id: "hms-overall-health-q12",
+          type: "binary",
+          stem: "Do the following eating practices apply to you?: I am vegan.",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        {
+          id: "hms-overall-health-q13",
+          type: "multi",
+          stem: "Why did you become vegan or vegetarian? (Select all that apply)",
+          options: [
+            { value: "1", label: "To improve my overall health." },
+            { value: "2", label: "To manage a specific health condition." },
+            { value: "3", label: "To lose weight." },
+            { value: "4", label: "To spend less money on food." },
+            { value: "5", label: "To reduce my carbon footprint or protect the environment." },
+            { value: "6", label: "Other (text)" },
+          ],
+          showIf: [{ questionId: "hms-overall-health-q12", in: ["1", "1"] }, { questionId: "hms-overall-health-q11", in: ["1", "1"] }],
+          group: "hms-overall-health-q12",
+        },
+        {
+          id: "hms-overall-health-q14",
+          type: "nominal",
+          stem: "Of the reasons selected above, which one is the most important or primary reason for becoming vegan or vegetarian?",
+          // TODO-VERIFY (needs_review): no clause matched parent Q#13
+          options: [
+            { value: "1", label: "To improve my overall health." },
+            { value: "2", label: "To manage a specific health condition." },
+            { value: "3", label: "To lose weight." },
+            { value: "4", label: "To spend less money on food." },
+            { value: "5", label: "To reduce my carbon footprint or protect the environment." },
+            { value: "6", label: "Other" },
+          ],
+          showIf: { questionId: "hms-overall-health-q13", any: true },
+          group: "hms-overall-health-q12",
+        },
+        {
+          id: "hms-overall-health-q16",
+          type: "nominal",
+          stem: "How many servings of fruits and vegetables do you usually have per day? (1 serving is 1 medium piece of fruit, 1 cup raw leafy vegetables, ½ cup fresh/frozen/canned fruits/vegetables, ¾ cup fruit/vegetable juice, or ¼ dried fruit)",
+          options: [
+            { value: "1", label: "0" },
+            { value: "2", label: "1-2" },
+            { value: "3", label: "3-4" },
+            { value: "4", label: "5 or more" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-overall-health-perceived-health-status",
+        title: "Perceived health status",
+        questions: [
+        {
+          id: "hms-overall-health-q1",
+          type: "nominal",
+          stem: "Overall, how would you describe your health?",
+          options: [
+            { value: "1", label: "Excellent" },
+            { value: "2", label: "Good" },
+            { value: "3", label: "Fair" },
+            { value: "4", label: "Poor" },
+            { value: "5", label: "Very poor" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-overall-health-concussion-tbi-history",
+        title: "Concussion / TBI history",
+        questions: [
+        {
+          id: "hms-overall-health-q6",
+          type: "nominal",
+          stem: "Thinking about any injuries to your head or neck that you have had in your lifetime, were you ever knocked out or did you lose consciousness?",
+          options: [
+            { value: "0", label: "No" },
+            { value: "1", label: "Yes" },
+            { value: "2", label: "I don’t know" },
+            { value: "3", label: "Prefer not to say" },
+          ],
+        },
+        {
+          id: "hms-overall-health-q9",
+          type: "nominal",
+          stem: "What was the longest time you were knocked out or unconscious? Would you say… (If you aren’t sure, please make your best guess)",
+          options: [
+            { value: "1", label: "Less than 5 minutes" },
+            { value: "2", label: "Between 5 and 30 minutes" },
+            { value: "3", label: "More than 30 minutes but less than 24 hours" },
+            { value: "4", label: "24 hours or longer" },
+            { value: "5", label: "I don’t know" },
+            { value: "6", label: "Prefer not to say" },
+          ],
+          showIf: { questionId: "hms-overall-health-q6", in: ["1"] },
+          group: "hms-overall-health-q6",
+        },
+        {
+          id: "hms-overall-health-q10",
+          type: "text",
+          stem: "How old were you the first time you were knocked out or lost consciousness?",
+          options: [],
+          showIf: { questionId: "hms-overall-health-q6", in: ["1"] },
+          group: "hms-overall-health-q6",
+        },
+        {
+          id: "hms-overall-health-q7",
+          type: "nominal",
+          stem: "Thinking about any injuries to your head or neck that you have had in your lifetime, were you ever dazed or have a gap in your memory from any of the injuries?",
+          options: [
+            { value: "0", label: "No" },
+            { value: "1", label: "Yes" },
+            { value: "2", label: "I don’t know" },
+            { value: "3", label: "Prefer not to say" },
+          ],
+        },
+        {
+          id: "hms-overall-health-q8",
+          type: "text",
+          stem: "How old were you the first time you were dazed or have a gap in your memory from an injury?",
+          options: [],
+          showIf: { questionId: "hms-overall-health-q7", in: ["1"] },
+          group: "hms-overall-health-q7",
+        },
+        ]
+      },
+      {
+        id: "hms-overall-health-exercise",
+        title: "Exercise",
+        questions: [
+        {
+          id: "hms-overall-health-q4",
+          type: "nominal",
+          stem: "How much do you agree with the following statement?: My exercise habits have changed a lot since I began as a student at my school.",
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+        },
+        {
+          id: "hms-overall-health-q5",
+          type: "nominal",
+          stem: "How have your exercise habits changed since you began as a student at your school?",
+          options: [
+            { value: "1", label: "I exercise more now." },
+            { value: "2", label: "I exercise less now." },
+            { value: "3", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: { questionId: "hms-overall-health-q4", in: ["1", "2", "4"] },
+          group: "hms-overall-health-q4",
+        },
+        {
+          id: "hms-overall-health-q3",
+          type: "nominal",
+          stem: "In the past 30 days, about how many hours per week on average did you spend exercising? (Include any exercise of moderate or higher intensity, where “moderate intensity” would be roughly equivalent to brisk walking or bicycling)",
+          options: [
+            { value: "1", label: "Less than 1 hour" },
+            { value: "6", label: "1-2 hours" },
+            { value: "2", label: "2-3 hours" },
+            { value: "3", label: "3-4 hours" },
+            { value: "4", label: "5 or more hours" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-overall-health-chronic-disease",
+        title: "Chronic disease",
+        questions: [
+        {
+          id: "hms-overall-health-q2",
+          type: "multi",
+          stem: "Have you ever been diagnosed with any of the following health conditions, which required ongoing treatment by a healthcare professional (i.e., chronic diseases)? (Select all that apply)",
+          options: [
+            { value: "1", label: "Diabetes" },
+            { value: "2", label: "High blood pressure" },
+            { value: "3", label: "Asthma" },
+            { value: "4", label: "Thyroid disease (e.g., hypothyroid or hyperthyroid)" },
+            { value: "5", label: "Gastrointestinal disease (e.g., Crohn’s Disease, Ulcerative Colitis)" },
+            { value: "6", label: "Arthritis" },
+            { value: "7", label: "Sickle cell anemia" },
+            { value: "8", label: "Seizure disorders (e.g., epilepsy)" },
+            { value: "9", label: "Cancers" },
+            { value: "10", label: "High cholesterol" },
+            { value: "11", label: "HIV/AIDS" },
+            { value: "12", label: "Other autoimmune disorder (please specify)", otherFreeText: true },
+            { value: "13", label: "Other chronic disease (please specify)", otherFreeText: true },
+            { value: "14", label: "No, never been diagnosed with a chronic disease.", exclusive: true },
+            { value: "15", label: "Don’t know", exclusive: true },
+          ],
+        },
+        ]
+      },
+    ]
+  },
+  {
+    id: "hms-financial-stress",
+    kind: "standard",
+    title: "Financial Stress",
+    sections: [
+      {
+        id: "hms-financial-stress-spending",
+        title: "Spending",
+        questions: [
+        {
+          id: "hms-financial-stress-q11",
+          type: "binary",
+          stem: "Have you ever participated in sports betting?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        {
+          id: "hms-financial-stress-q12",
+          type: "nominal",
+          stem: "How often have you used online sportsbook applications (e.g., Draftkings, Fanduel, Bet MGM) in the past year in order to participate in sports betting?",
+          options: [
+            { value: "1", label: "Often" },
+            { value: "2", label: "Sometimes" },
+            { value: "3", label: "Rarely" },
+            { value: "4", label: "Never" },
+          ],
+          showIf: { questionId: "hms-financial-stress-q11", in: ["1"] },
+          group: "hms-financial-stress-q11",
+        },
+        {
+          id: "hms-financial-stress-q13",
           type: "matrix",
-          stem: "Below are 8 statements with which you may agree or disagree. Using the 1-7 scale below, indicate your agreement with each item by indicating that response for each statement. I lead a purposeful and meaningful life. My social relationships are supportive and rewarding. I am engaged and interested in my daily activities. I actively contribute to the happiness and well-being of others. I am competent and capable in the activities that are important to me. I am a good person and live a good life. I am optimistic about my future. People respect me.",
+          stem: "To what extent to which you agree or disagree with each of the following statements:",
           items: [
-            { id: "hms-mental-health-status-q1-i0", label: "Below are 8 statements with which you may agree or disagree." },
-            { id: "hms-mental-health-status-q1-i1", label: "Using the 1-7 scale below, indicate your agreement with each item by indicating that response for each statement." },
-            { id: "hms-mental-health-status-q1-i2", label: "I lead a purposeful and meaningful life." },
-            { id: "hms-mental-health-status-q1-i3", label: "My social relationships are supportive and rewarding." },
-            { id: "hms-mental-health-status-q1-i4", label: "I am engaged and interested in my daily activities." },
-            { id: "hms-mental-health-status-q1-i5", label: "I actively contribute to the happiness and well-being of others." },
-            { id: "hms-mental-health-status-q1-i6", label: "I am competent and capable in the activities that are important to me." },
-            { id: "hms-mental-health-status-q1-i7", label: "I am a good person and live a good life." },
-            { id: "hms-mental-health-status-q1-i8", label: "I am optimistic about my future." },
-            { id: "hms-mental-health-status-q1-i9", label: "People respect me." },
+            { id: "hms-financial-stress-q13-i0", label: "I feel like sports betting controls my life" },
+            { id: "hms-financial-stress-q13-i1", label: "I have no problem setting limits on how much money" },
+            { id: "hms-financial-stress-q13-i2", label: "I bet on sports" },
+          ],
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Neither agree nor disagree" },
+            { value: "5", label: "Somewhat disagree" },
+            { value: "6", label: "Disagree" },
+            { value: "7", label: "Strongly disagree" },
+          ],
+          showIf: { questionId: "hms-financial-stress-q11", in: ["1"] },
+          group: "hms-financial-stress-q11",
+        },
+        ]
+      },
+      {
+        id: "hms-financial-stress-housing-concerns",
+        title: "Housing concerns",
+        questions: [
+        {
+          id: "hms-financial-stress-q6",
+          type: "binary",
+          stem: "Do you have any concerns about your current living situation, like housing conditions, safety, and costs?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "2", label: "No" },
+          ],
+        },
+        {
+          id: "hms-financial-stress-q7",
+          type: "multi",
+          stem: "What are those concerns? (Select all that apply.",
+          options: [
+            { value: "1", label: "Condition/quality of housing" },
+            { value: "2", label: "Lack of more permanent housing" },
+            { value: "3", label: "Ability to pay for housing or utilities" },
+            { value: "4", label: "Feeling safe" },
+            { value: "5", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: { questionId: "hms-financial-stress-q6", in: ["1"] },
+          group: "hms-financial-stress-q6",
+        },
+        {
+          id: "hms-financial-stress-q8",
+          type: "multi",
+          stem: "Which of the following have you used to pay for educational expenses (room, board, tuition, and fees)? (Select all that apply)",
+          options: [
+            { value: "1", label: "Family resources (parents, relatives, spouse, etc.)" },
+            { value: "2", label: "Your own resources (income from work, work-study, etc.)" },
+            { value: "3", label: "Aid that need not be repaid (grants, scholarships, military, etc.)" },
+            { value: "4", label: "Aid that must be repaid (loans)" },
+            { value: "5", label: "Other sources (please specify)", otherFreeText: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-financial-stress-socioeconom-ic-status",
+        title: "Socioeconom ic status",
+        questions: [
+        {
+          id: "hms-financial-stress-q2",
+          type: "nominal",
+          stem: "How would you describe your financial situation right now?",
+          options: [
+            { value: "1", label: "Always stressful" },
+            { value: "2", label: "Often stressful" },
+            { value: "3", label: "Sometimes stressful" },
+            { value: "4", label: "Rarely stressful" },
+            { value: "5", label: "Never stressful" },
+          ],
+        },
+        {
+          id: "hms-financial-stress-q1",
+          type: "nominal",
+          stem: "How would you describe your financial situation while growing up?",
+          options: [
+            { value: "1", label: "Always stressful" },
+            { value: "2", label: "Often stressful" },
+            { value: "3", label: "Sometimes stressful" },
+            { value: "4", label: "Rarely stressful" },
+            { value: "5", label: "Never stressful" },
+          ],
+        },
+        {
+          id: "hms-financial-stress-q4",
+          type: "nominal",
+          stem: "Within the past 12 months the food I bought just didn’t last and I didn’t have money to get more.",
+          options: [
+            { value: "1", label: "Often true" },
+            { value: "2", label: "Sometimes true" },
+            { value: "3", label: "Never true" },
+          ],
+        },
+        {
+          id: "hms-financial-stress-q3",
+          type: "nominal",
+          stem: "Within the past 12 months I worried whether our food would run out before we got money to buy more.",
+          options: [
+            { value: "1", label: "Often true" },
+            { value: "2", label: "Sometimes true" },
+            { value: "3", label: "Never true" },
+          ],
+        },
+        {
+          id: "hms-financial-stress-q5",
+          type: "multi",
+          stem: "Within the past 12 months, which of the following expenses have you had difficulty paying for? (Select all that apply)",
+          options: [
+            { value: "1", label: "School" },
+            { value: "2", label: "Food" },
+            { value: "3", label: "Transportation" },
+            { value: "4", label: "Childcare" },
+            { value: "5", label: "Health care" },
+            { value: "6", label: "Textbooks or course materials" },
+            { value: "7", label: "Housing" },
+            { value: "8", label: "None of the above", exclusive: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-financial-stress-scholarship-status",
+        title: "Scholarship Status",
+        questions: [
+        {
+          id: "hms-financial-stress-q10",
+          type: "multi",
+          stem: "Do you receive scholarship funding from your institution? (Select all that apply)",
+          options: [
+            { value: "1", label: "No", exclusive: true },
+            { value: "2", label: "Yes, a need based scholarship" },
+            { value: "3", label: "Yes, an academic scholarship (or merit scholarship)" },
+            { value: "4", label: "Yes, an athletic scholarship" },
+            { value: "5", label: "Other (please specify)", otherFreeText: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-financial-stress-financing-education",
+        title: "Financing education",
+        questions: [
+        {
+          id: "hms-financial-stress-q9",
+          type: "nominal",
+          stem: "To what extent do you agree or disagree with the following statements? I am worried about my ability to pay for school. I am worried about my ability to repay my student loans in the future [if loans selected above] My student loans negatively impact my mental health [if loans selected above]",
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+        },
+        ]
+      },
+    ]
+  },
+  {
+    id: "hms-academic-persistence-retention-and-competition",
+    kind: "standard",
+    title: "Academic Persistence, Retention and Competition",
+    sections: [
+      {
+        id: "hms-academic-persistence-retention-and-competition-overall-academic-experience",
+        title: "Overall academic experience",
+        questions: [
+        {
+          id: "hms-academic-persistence-retention-and-competition-q8",
+          type: "nominal",
+          stem: "What is the highest degree you plan to pursue?",
+          options: [
+            { value: "1", label: "2-year college degree (associate’s)" },
+            { value: "2", label: "4-year college degree (bachelor’s)" },
+            { value: "3", label: "Master’s degree" },
+            { value: "4", label: "Doctoral degree (JD, MD, Ph D, etc.)" },
+            { value: "5", label: "Other degree (please specify)", otherFreeText: true },
+            { value: "6", label: "Don’t know" },
+          ],
+        },
+        {
+          id: "hms-academic-persistence-retention-and-competition-q6",
+          type: "nominal",
+          stem: "How much do you agree with the following statement? If I could make my choice over, I would still choose to enroll at my school.",
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+        },
+        {
+          id: "hms-academic-persistence-retention-and-competition-q7",
+          type: "multi",
+          stem: "Which of the following challenges are most likely to prevent you from finishing your degree? (Select all that apply)",
+          options: [
+            { value: "1", label: "Financial challenges" },
+            { value: "2", label: "Mental or emotional health problems" },
+            { value: "3", label: "Other health problems (not directly related to mental or emotional health)" },
+            { value: "4", label: "Family obligations" },
+            { value: "5", label: "Family or relationship difficulties" },
+            { value: "6", label: "Academic challenges (struggling to pass classes)" },
+            { value: "7", label: "[if not U.S. citizen, ask→Visa or other challenges related to being a non-U.S. citizen]" },
+            { value: "8", label: "Lack of motivation or desire" },
+            { value: "9", label: "Work or professional commitments" },
+            { value: "10", label: "Career opportunities" },
+            { value: "11", label: "Other challenge(s) (please specify)", otherFreeText: true },
+          ],
+        },
+        {
+          id: "hms-academic-persistence-retention-and-competition-q10",
+          type: "nominal",
+          stem: "How has it been to adjust to the academic demands of [college/graduate school] since you began as a student at your school?",
+          options: [
+            { value: "1", label: "Very easy" },
+            { value: "2", label: "Easy" },
+            { value: "3", label: "Somewhat easy" },
+            { value: "4", label: "Somewhat difficult" },
+            { value: "5", label: "Difficult" },
+            { value: "6", label: "Very difficult" },
+          ],
+        },
+        {
+          id: "hms-academic-persistence-retention-and-competition-q11",
+          type: "matrix",
+          stem: "Have you",
+          items: [
+            { id: "hms-academic-persistence-retention-and-competition-q11-i0", label: "decided to pursue a different major since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q11-i1", label: "failed one or more courses since you began as a student at your school?" },
+          ],
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        {
+          id: "hms-academic-persistence-retention-and-competition-q9",
+          type: "nominal",
+          stem: "How much do you agree with the following statements? I have doubts about whether higher education is worth the time, money, and effort that I’m spending on it. My family is very supportive of my educational goals. My professors believe in my potential to succeed academically.",
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-academic-persistence-retention-and-competition-faculty-advising-ph-d-students",
+        title: "Faculty Advising (Ph D Students)",
+        questions: [
+        {
+          id: "hms-academic-persistence-retention-and-competition-q13",
+          type: "nominal",
+          stem: "Which best describes how your mental and emotional health is affected by your faculty advisor(s)?",
+          options: [
+            { value: "1", label: "Strong negative effect" },
+            { value: "2", label: "Somewhat negative effect" },
+            { value: "3", label: "No effect/neutral effect" },
+            { value: "4", label: "Somewhat positive effect" },
+            { value: "5", label: "Strong positive effect" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-academic-persistence-retention-and-competition-perceived-competition",
+        title: "Perceived competition",
+        questions: [
+        {
+          id: "hms-academic-persistence-retention-and-competition-q3",
+          type: "nominal",
+          stem: "How frequently do instructors in your major/field of study grade your work on a curve (adjust grades based on the grade distribution among students in a class)?",
+          options: [
+            { value: "1", label: "Never" },
+            { value: "2", label: "Almost never" },
+            { value: "3", label: "Occasionally/sometimes" },
+            { value: "4", label: "Almost every time" },
+            { value: "5", label: "Every time" },
+          ],
+        },
+        {
+          id: "hms-academic-persistence-retention-and-competition-q2",
+          type: "matrix",
+          stem: "How would you rate the overall competitiveness among students",
+          items: [
+            { id: "hms-academic-persistence-retention-and-competition-q2-i0", label: "in your current classes?" },
+            { id: "hms-academic-persistence-retention-and-competition-q2-i1", label: "at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q2-i2", label: "in your field of study?" },
+          ],
+          options: [
+            { value: "1", label: "Very competitive" },
+            { value: "2", label: "Competitive" },
+            { value: "3", label: "Somewhat competitive" },
+            { value: "4", label: "Not competitive" },
+            { value: "5", label: "Very uncompetitive" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-academic-persistence-retention-and-competition-overall-social-experience",
+        title: "Overall social experience",
+        questions: [
+        {
+          id: "hms-academic-persistence-retention-and-competition-q14",
+          type: "nominal",
+          stem: "How has it been to… …develop close friendships with other students at your school? …manage your time effectively since you began as a student at your school?",
+          options: [
+            { value: "1", label: "Very easy" },
+            { value: "2", label: "Easy" },
+            { value: "3", label: "Somewhat easy" },
+            { value: "4", label: "Somewhat difficult" },
+            { value: "5", label: "Difficult" },
+            { value: "6", label: "Very difficult" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-academic-persistence-retention-and-competition-imposter-syndrome",
+        title: "Imposter Syndrome",
+        questions: [
+        {
+          id: "hms-academic-persistence-retention-and-competition-q5",
+          type: "matrix",
+          stem: "How much do you agree with the following statements?",
+          items: [
+            { id: "hms-academic-persistence-retention-and-competition-q5-i0", label: "I’m afraid people important to me may find out that I’m not as capable as they think I am." },
+            { id: "hms-academic-persistence-retention-and-competition-q5-i1", label: "Sometimes I feel or believe that my success in life or in academics has been the result of some kind of error." },
+            { id: "hms-academic-persistence-retention-and-competition-q5-i2", label: "At times, I feel my success was due to some kind of luck." },
+            { id: "hms-academic-persistence-retention-and-competition-q5-i3", label: "Sometimes I’m afraid others will discover how much knowledge or ability I really lack." },
+            { id: "hms-academic-persistence-retention-and-competition-q5-i4", label: "I often compare my ability to those around me and think they may be more intelligent than I am." },
           ],
           options: [
             { value: "1", label: "Strongly disagree" },
             { value: "2", label: "Disagree" },
-            { value: "3", label: "Slightly disagree" },
-            { value: "4", label: "Mixed or neither agree nor disagree" },
-            { value: "5", label: "Slightly agree" },
-            { value: "6", label: "Agree" },
-            { value: "7", label: "Strongly agree" },
+            { value: "3", label: "Neither agree nor disagree" },
+            { value: "4", label: "Agree" },
+            { value: "5", label: "Strongly agree" },
           ],
         },
         ]
       },
       {
-        id: "hms-mental-health-status-depression-phq-9",
-        title: "Depression (PHQ-9)",
+        id: "hms-academic-persistence-retention-and-competition-clarifying-achievement-goals-and-their-impact",
+        title: "Clarifying achievement goals and their impact",
         questions: [
         {
-          id: "hms-mental-health-status-q2",
+          id: "hms-academic-persistence-retention-and-competition-q4",
           type: "matrix",
-          stem: "Over the last 2 weeks, how often have you been bothered by any of the following problems? Little interest or pleasure in doing things Feeling down, depressed or hopeless Trouble falling or staying asleep, or sleeping too much Feeling tired or having little energy Poor appetite or overeating Feeling bad about yourself– or that you are a failure or have let yourself or your family down Trouble concentrating on things, such as reading the newspaper or watching television Moving or speaking so slowly that other people could have noticed; or the opposite– being so fidgety or restless that you have been moving around a lot more than usual Thoughts that you would be better off dead or of hurting yourself in some way",
+          stem: "How much do you agree with the following statements?",
           items: [
-            { id: "hms-mental-health-status-q2-i0", label: "Little interest or pleasure in doing things" },
-            { id: "hms-mental-health-status-q2-i1", label: "Feeling down, depressed or hopeless" },
-            { id: "hms-mental-health-status-q2-i2", label: "Trouble falling or staying asleep, or sleeping too much" },
-            { id: "hms-mental-health-status-q2-i3", label: "Feeling tired or having little energy" },
-            { id: "hms-mental-health-status-q2-i4", label: "Poor appetite or overeating" },
-            { id: "hms-mental-health-status-q2-i5", label: "Feeling bad about yourself– or that you are a failure or have let yourself or your family down" },
-            { id: "hms-mental-health-status-q2-i6", label: "Trouble concentrating on things, such as reading the newspaper or watching television" },
-            { id: "hms-mental-health-status-q2-i7", label: "Moving or speaking so slowly that other people could have noticed; or the opposite– being so fidgety or restless that you have been moving around a lot more than usual" },
-            { id: "hms-mental-health-status-q2-i8", label: "Thoughts that you would be better off dead or of hurting yourself in some way" },
+            { id: "hms-academic-persistence-retention-and-competition-q4-i0", label: "It is very important to me to do well in my courses." },
+            { id: "hms-academic-persistence-retention-and-competition-q4-i1", label: "It is important to me to confirm my intelligence through my schoolwork." },
+            { id: "hms-academic-persistence-retention-and-competition-q4-i2", label: "In school, I am always seeking opportunities to develop new skills and acquire new knowledge." },
+            { id: "hms-academic-persistence-retention-and-competition-q4-i3", label: "It is very important to me to feel that my coursework offers me real challenges." },
           ],
           options: [
-            { value: "1", label: "Not at all" },
-            { value: "2", label: "Several days" },
-            { value: "3", label: "More than half the days" },
-            { value: "4", label: "Nearly every day" },
-          ],
-        },
-        {
-          id: "hms-mental-health-status-q3",
-          type: "nominal",
-          stem: "How difficult have these problems (noted above) made it for you to do your work, take care of things at home, or get along with other people?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#2
-          options: [
-            { value: "1", label: "Not difficult at all" },
-            { value: "2", label: "Somewhat difficult" },
-            { value: "3", label: "Very difficult" },
-            { value: "4", label: "Extremely difficult" },
-          ],
-          showIf: { questionId: "hms-mental-health-status-q2", any: true },
-          group: "hms-mental-health-status-q2",
-        },
-        {
-          id: "hms-mental-health-status-q4",
-          type: "matrix",
-          stem: "Think about the 2-week period in the past year when you experienced the 2 problems below the most frequently. During that period, how often were you bothered by these problems? Little interest or pleasure in doing things Feeling down, depressed, or hopeless",
-          items: [
-            { id: "hms-mental-health-status-q4-i0", label: "Little interest or pleasure in doing things" },
-            { id: "hms-mental-health-status-q4-i1", label: "Feeling down, depressed, or hopeless" },
-          ],
-          options: [
-            { value: "1", label: "Not at all" },
-            { value: "2", label: "Several days" },
-            { value: "3", label: "More than half the days" },
-            { value: "4", label: "Nearly every day" },
+            { value: "1", label: "Strongly disagree" },
+            { value: "2", label: "Disagree" },
+            { value: "3", label: "Neither agree nor disagree" },
+            { value: "4", label: "Agree" },
+            { value: "5", label: "Strongly agree" },
           ],
         },
         ]
       },
       {
-        id: "hms-mental-health-status-anxiety-gad-7",
-        title: "Anxiety (GAD-7)",
+        id: "hms-academic-persistence-retention-and-competition-stress-mindset",
+        title: "Stress mindset",
         questions: [
         {
-          id: "hms-mental-health-status-q5",
+          id: "hms-academic-persistence-retention-and-competition-q1",
           type: "matrix",
-          stem: "Over the last 2 weeks, how often have you been bothered by the following problems? Feeling nervous, anxious or on edge Not being able to stop or control worrying Worrying too much about different things Trouble relaxing Being so restless that it’s hard to sit still Becoming easily annoyed or irritable Feeling afraid as if something awful might happen",
+          stem: "Please rate the extent to which you agree or disagree with the following statements.",
           items: [
-            { id: "hms-mental-health-status-q5-i0", label: "Feeling nervous, anxious or on edge" },
-            { id: "hms-mental-health-status-q5-i1", label: "Not being able to stop or control worrying" },
-            { id: "hms-mental-health-status-q5-i2", label: "Worrying too much about different things" },
-            { id: "hms-mental-health-status-q5-i3", label: "Trouble relaxing" },
-            { id: "hms-mental-health-status-q5-i4", label: "Being so restless that it’s hard to sit still" },
-            { id: "hms-mental-health-status-q5-i5", label: "Becoming easily annoyed or irritable" },
-            { id: "hms-mental-health-status-q5-i6", label: "Feeling afraid as if something awful might happen" },
+            { id: "hms-academic-persistence-retention-and-competition-q1-i0", label: "Experiencing stress depletes health and vitality." },
+            { id: "hms-academic-persistence-retention-and-competition-q1-i1", label: "Experiencing stress enhances performance and productivity." },
+            { id: "hms-academic-persistence-retention-and-competition-q1-i2", label: "Experiencing stress inhibits learning and growth." },
+            { id: "hms-academic-persistence-retention-and-competition-q1-i3", label: "The effects of stress are positive and should be utilized." },
           ],
           options: [
-            { value: "1", label: "Not at all" },
-            { value: "2", label: "Several days" },
-            { value: "3", label: "Over half the days" },
-            { value: "4", label: "Nearly every day" },
+            { value: "1", label: "Strongly disagree" },
+            { value: "2", label: "Disagree" },
+            { value: "3", label: "Neither agree nor disagree" },
+            { value: "4", label: "Agree" },
+            { value: "5", label: "Strongly agree" },
           ],
-        },
-        {
-          id: "hms-mental-health-status-q6",
-          type: "nominal",
-          stem: "How difficult have these problems (noted above) made it for you to do your work, take care of things at home, or get along with other people?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#5
-          options: [
-            { value: "1", label: "Not difficult at all" },
-            { value: "2", label: "Somewhat difficult" },
-            { value: "3", label: "Very difficult" },
-            { value: "4", label: "Extremely difficult" },
-          ],
-          showIf: { questionId: "hms-mental-health-status-q5", any: true },
-          group: "hms-mental-health-status-q5",
         },
         ]
       },
       {
-        id: "hms-mental-health-status-academic-impairment",
-        title: "Academic Impairment",
+        id: "hms-academic-persistence-retention-and-competition-experiences-with-faculty-and-academic-support-services",
+        title: "Experiences with faculty and academic support services",
         questions: [
         {
-          id: "hms-mental-health-status-q7",
-          type: "nominal",
-          stem: "In the past 4 weeks, how many days have you felt that emotional or mental difficulties have hurt your academic performance?",
+          id: "hms-academic-persistence-retention-and-competition-q12",
+          type: "matrix",
+          stem: "How often have you",
+          items: [
+            { id: "hms-academic-persistence-retention-and-competition-q12-i0", label: "utilized academic support services (e.g., a writing center, tutor, etc.) since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i1", label: "interacted with faculty during office hours since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i2", label: "interacted with faculty outside of class or office hours (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i3", label: "interacted with academic advisors/counselors (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i4", label: "interacted with graduate students/teaching assistants (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
+          ],
           options: [
-            { value: "1", label: "None" },
-            { value: "2", label: "1-2 days" },
-            { value: "3", label: "3-5 days" },
-            { value: "4", label: "6 or more days" },
+            { value: "1", label: "Everyday or nearly everyday" },
+            { value: "2", label: "2 to 3 times per week" },
+            { value: "3", label: "Once per week" },
+            { value: "4", label: "1 to 2 times per month" },
+            { value: "5", label: "1 to 2 times per semester" },
+            { value: "6", label: "Never" },
           ],
         },
         ]
       },
+      {
+        id: "hms-academic-persistence-retention-and-competition-issues-affecting-academic-performance",
+        title: "Issues affecting academic performance",
+        questions: [
+        {
+          id: "hms-academic-persistence-retention-and-competition-q15",
+          type: "matrix",
+          stem: "In the past year, how has the following affected your academic performance? (Select all that apply)",
+          items: [
+            { id: "hms-academic-persistence-retention-and-competition-q15-i0", label: "Anxiety/stress" },
+            { id: "hms-academic-persistence-retention-and-competition-q15-i1", label: "Depression/suicidality" },
+            { id: "hms-academic-persistence-retention-and-competition-q15-i2", label: "Eating/body image concerns" },
+            { id: "hms-academic-persistence-retention-and-competition-q15-i3", label: "Attention disorder or learning disability (e.g., attention deficit disorder, attention deficit hyperactivity disorder, learning disability)" },
+            { id: "hms-academic-persistence-retention-and-competition-q15-i4", label: "Alcohol/substance use" },
+            { id: "hms-academic-persistence-retention-and-competition-q15-i5", label: "Physical health condition" },
+            { id: "hms-academic-persistence-retention-and-competition-q15-i6", label: "Physical assault" },
+            { id: "hms-academic-persistence-retention-and-competition-q15-i7", label: "Sexual assault" },
+          ],
+          options: [
+            { value: "1", label: "I did not experience this." },
+            { value: "2", label: "I experienced this but it did not affect my academic performance." },
+            { value: "3", label: "I received a lower grade on one or more exams or projects." },
+            { value: "4", label: "I received a lower grade in one or more courses." },
+            { value: "5", label: "I received an incomplete or dropped one or more courses." },
+            { value: "6", label: "I had a significant disruption in research, practicum, thesis, or dissertation work." },
+            { value: "7", label: "Other (please specify)", otherFreeText: true },
+          ],
+        },
+        ]
+      },
+    ]
+  },
+  {
+    id: "hms-mental-health-status",
+    kind: "standard",
+    title: "Mental Health Status",
+    sections: [
       {
         id: "hms-mental-health-status-eating-and-body-image",
         title: "Eating and body image",
@@ -272,110 +852,20 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-mental-health-status-sde",
-        title: "SDE",
+        id: "hms-mental-health-status-sleep",
+        title: "Sleep",
         questions: [
         {
-          id: "hms-mental-health-status-q9",
-          type: "matrix",
-          stem: "Please answer the following questions as honestly as possible. Do you often feel the desire to eat when you are emotionally upset or stressed? Do you often feel that you can't control what or how much you eat? Do you sometimes make yourself throw up (vomit) to control your weight? Are you often preoccupied with a desire to be thinner? Do you believe yourself to be fat when others say you are thin?",
-          items: [
-            { id: "hms-mental-health-status-q9-i0", label: "Please answer the following questions as honestly as possible. Do you often feel the desire to eat when you are emotionally upset or stressed? Do you often feel that you can't control what or how much you eat? Do you sometimes make yourself throw up (vomit) to control your weight? Are you often preoccupied with a desire to be thinner? Do you believe yourself to be fat when others say you are thin?" },
-          ],
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-status-psychosis-screen",
-        title: "Psychosis Screen",
-        questions: [
-        {
-          id: "hms-mental-health-status-q10",
-          type: "matrix",
-          stem: "Please answer the following yes/no questions: Do you ever hear the voice of someone talking that other people cannot hear? Have you ever felt that someone was playing with your mind?",
-          items: [
-            { id: "hms-mental-health-status-q10-i0", label: "Please answer the following yes/no questions: Do you ever hear the voice of someone talking that other people cannot hear? Have you ever felt that someone was playing with your mind?" },
-          ],
-          options: [
-            { value: "0", label: "No" },
-            { value: "1", label: "Yes" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-status-non-suicidal-self-injury",
-        title: "Non-suicidal self-injury",
-        questions: [
-        {
-          id: "hms-mental-health-status-q11",
-          type: "multi",
-          stem: "In the past year, have you ever done any of the following with the intent to harm yourself or manage strong emotions? (Select all that apply)",
-          options: [
-            { value: "1", label: "Cut myself" },
-            { value: "2", label: "Burned myself" },
-            { value: "3", label: "Punched or banged myself" },
-            { value: "4", label: "Scratched myself" },
-            { value: "5", label: "Pulled my hair" },
-            { value: "6", label: "Bit myself" },
-            { value: "7", label: "Interfered with wound healing" },
-            { value: "8", label: "Carved words or symbols into skin" },
-            { value: "9", label: "Rubbed sharp objects into skin" },
-            { value: "10", label: "Punched or banged an object to hurt myself" },
-            { value: "11", label: "Others", otherFreeText: true },
-            { value: "12", label: "No, none of these", exclusive: true },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-status-suicidality",
-        title: "Suicidality",
-        questions: [
-        {
-          id: "hms-mental-health-status-q12",
-          type: "binary",
-          stem: "In the past year, did you ever seriously think about attempting suicide?",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "2", label: "No" },
-          ],
+          id: "hms-mental-health-status-q21",
+          type: "text",
+          stem: "On average, year, how many hours of sleep, on average, do you get on weekend nights?",
+          options: [],
         },
         {
-          id: "hms-mental-health-status-q13",
-          type: "matrix",
-          stem: "In the past year, did you… … make a plan for attempting suicide? … attempt suicide?",
-          items: [
-            { id: "hms-mental-health-status-q13-i0", label: "make a plan for attempting suicide?" },
-            { id: "hms-mental-health-status-q13-i1", label: "attempt suicide?" },
-          ],
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-status-loneliness",
-        title: "Loneliness",
-        questions: [
-        {
-          id: "hms-mental-health-status-q14",
-          type: "matrix",
-          stem: "Please answer the following: How often do you feel that you lack companionship? How often do you feel left out? How often do you feel isolated from others?",
-          items: [
-            { id: "hms-mental-health-status-q14-i0", label: "Please answer the following: How often do you feel that you lack companionship? How often do you feel left out? How often do you feel isolated from others?" },
-          ],
-          options: [
-            { value: "1", label: "Hardly ever" },
-            { value: "2", label: "Some of the time" },
-            { value: "3", label: "Often" },
-          ],
+          id: "hms-mental-health-status-q20",
+          type: "text",
+          stem: "On average, how many hours of sleep, on average, do you get on weeknights?",
+          options: [],
         },
         ]
       },
@@ -424,8 +914,7 @@ window.STUDY_MODULES = [
         {
           id: "hms-mental-health-status-q18",
           type: "nominal",
-          stem: "On average, about how often do you use the nicotine product(s) you selected? Cigarettes Nicotine vape Chewing tobacco Nicotine pouches Smoking cessation aids (e.g., nicotine patches or gum)",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#17
+          stem: "On average, about how often do you use the nicotine product(s) you selected?",
           options: [
             { value: "1", label: "Multiple times throughout the day" },
             { value: "2", label: "Once a day" },
@@ -435,154 +924,48 @@ window.STUDY_MODULES = [
             { value: "6", label: "Once a month" },
             { value: "7", label: "Less than once a month" },
           ],
-          showIf: { questionId: "hms-mental-health-status-q17", any: true },
+          showIf: { questionId: "hms-mental-health-status-q17", excludesAny: ["0"] },
           group: "hms-mental-health-status-q17",
         },
         ]
       },
       {
-        id: "hms-mental-health-status-exercise",
-        title: "Exercise",
+        id: "hms-mental-health-status-psychosis-screen",
+        title: "Psychosis Screen",
         questions: [
         {
-          id: "hms-mental-health-status-q19",
-          type: "nominal",
-          stem: "In the past 30 days, about how many hours per week on average did you spend exercising? (Include any exercise of moderate or higher intensity, where “moderate intensity” would be roughly equivalent to brisk walking or bicycling)",
-          options: [
-            { value: "1", label: "Less than 1 hour" },
-            { value: "6", label: "1-2 hours" },
-            { value: "2", label: "2-3 hours" },
-            { value: "3", label: "3-4 hours" },
-            { value: "4", label: "5 or more hours" },
+          id: "hms-mental-health-status-q10",
+          type: "matrix",
+          stem: "Please answer the following yes/no questions:",
+          items: [
+            { id: "hms-mental-health-status-q10-i0", label: "Do you ever hear the voice of someone talking that other people cannot hear?" },
+            { id: "hms-mental-health-status-q10-i1", label: "Have you ever felt that someone was playing with your mind?" },
           ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-status-sleep",
-        title: "Sleep",
-        questions: [
-                {
-          id: "hms-mental-health-status-q20",
-          type: "nominal",
-          stem: "On average, how many hours of sleep, on average, do you get on weeknights?",
-          options: [
-            { value: "1", label: "1 hour" },
-            { value: "2", label: "2 hours" },
-            { value: "3", label: "3 hours" },
-            { value: "4", label: "4 hours" },
-            { value: "5", label: "5 hours" },
-            { value: "6", label: "6 hours" },
-            { value: "7", label: "7 hours" },
-            { value: "7+", label: "7+ hours" },
-          ],
-        },
-                {
-          id: "hms-mental-health-status-q21",
-          type: "nominal",
-          stem: "On average, year, how many hours of sleep, on average, do you get on weekend nights?",
-          options: [
-            { value: "1", label: "1 hour" },
-            { value: "2", label: "2 hours" },
-            { value: "3", label: "3 hours" },
-            { value: "4", label: "4 hours" },
-            { value: "5", label: "5 hours" },
-            { value: "6", label: "6 hours" },
-            { value: "7", label: "7 hours" },
-            { value: "7+", label: "7+ hours" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-status-suicide-contagion",
-        title: "Suicide Contagion",
-        questions: [
-        {
-          id: "hms-mental-health-status-q22",
-          type: "nominal",
-          stem: "Are you aware of anyone who died by suicide in your current college or university community during your time as a student there? Please count any faculty, staff, or students who died by suicide, even if they were not on campus when they died (e.g., were on a school break, or on a leave of absence).",
           options: [
             { value: "0", label: "No" },
             { value: "1", label: "Yes" },
-            { value: "3", label: "Unsure (e.g., there was a death and I suspected that it might have been a suicide, but it was never confirmed to be a suicide by my school or the media)" },
           ],
         },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-loneliness",
+        title: "Loneliness",
+        questions: [
         {
-          id: "hms-mental-health-status-q23",
-          type: "nominal",
-          stem: "When did the confirmed or possible suicide death(s) occur?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#22
-          options: [
-            { value: "1", label: "More than 1 year ago" },
-            { value: "2", label: "In the past year" },
-            { value: "3", label: "Both (at least one death occurred more than a year ago, and at least one death occurred in the past year)" },
+          id: "hms-mental-health-status-q14",
+          type: "matrix",
+          stem: "Please answer the following:",
+          items: [
+            { id: "hms-mental-health-status-q14-i0", label: "How often do you feel that you lack companionship?" },
+            { id: "hms-mental-health-status-q14-i1", label: "How often do you feel left out?" },
+            { id: "hms-mental-health-status-q14-i2", label: "How often do you feel isolated from others?" },
           ],
-          showIf: { questionId: "hms-mental-health-status-q22", any: true },
-          group: "hms-mental-health-status-q22",
-        },
-        {
-          id: "hms-mental-health-status-q24",
-          type: "multi",
-          stem: "Please select all statements that apply about the individual who died by suicide or suspected suicide. If there was more than one death during your time as a student, please answer for the first death that you remember on your campus. Select all that apply.",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#22
           options: [
-            { value: "1", label: "We had a social relationship (e.g., partners, friends, etc.)" },
-            { value: "2", label: "We shared an aspect of our identity (e.g., same race/ethnicity, shared religion, both identify as LGBTQ+, etc.)" },
-            { value: "3", label: "We shared an academic affiliation (e.g., in the same major, department, or student organization)" },
-            { value: "4", label: "We both lived in the same housing building (e.g., dorm, apartment)" },
-            { value: "5", label: "None of these", exclusive: true },
+            { value: "1", label: "Hardly ever" },
+            { value: "2", label: "Some of the time" },
+            { value: "3", label: "Often" },
           ],
-          showIf: { questionId: "hms-mental-health-status-q22", any: true },
-          group: "hms-mental-health-status-q22",
-        },
-        {
-          id: "hms-mental-health-status-q25",
-          type: "multi",
-          stem: "In which venues was the death by suicide discussed or acknowledged? Select all that apply.",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#22
-          options: [
-            { value: "1", label: "An official institutional communication (e.g., email, emergency alert system)" },
-            { value: "2", label: "A memorial" },
-            { value: "3", label: "News media (e.g., newspapers or blogs)" },
-            { value: "4", label: "Social media (e.g., Reddit, Instagram, Meta, X)" },
-            { value: "5", label: "Word of mouth from my peers" },
-            { value: "6", label: "Other", otherFreeText: true },
-            { value: "7", label: "I don’t remember" },
-            { value: "8", label: "None of these" },
-          ],
-          showIf: { questionId: "hms-mental-health-status-q22", any: true },
-          group: "hms-mental-health-status-q22",
-        },
-        {
-          id: "hms-mental-health-status-q26",
-          type: "nominal",
-          stem: "Thinking about the effect of the person’s suicide on your life, what response is closest to your experience?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#22
-          options: [
-            { value: "1", label: "The death had little effect on my life" },
-            { value: "2", label: "The death had somewhat of an effect on me but didn’t disrupt my life" },
-            { value: "3", label: "The death disrupted my life for a short time" },
-            { value: "4", label: "The death disrupted my life in a significant or devastating way, but I no longer feel that way" },
-            { value: "5", label: "The death had a significant or devastating effect on me that I still feel" },
-          ],
-          showIf: { questionId: "hms-mental-health-status-q22", any: true },
-          group: "hms-mental-health-status-q22",
-        },
-        {
-          id: "hms-mental-health-status-q27",
-          type: "nominal",
-          stem: "How close would you describe your relationship with this person?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#22
-          options: [
-            { value: "1", label: "Not close" },
-            { value: "2", label: "A little close" },
-            { value: "3", label: "Somewhat close" },
-            { value: "4", label: "Moderately close" },
-            { value: "5", label: "Very close" },
-          ],
-          showIf: { questionId: "hms-mental-health-status-q22", any: true },
-          group: "hms-mental-health-status-q22",
         },
         ]
       },
@@ -609,7 +992,6 @@ window.STUDY_MODULES = [
           id: "hms-mental-health-status-q29",
           type: "nominal",
           stem: "We know that there are many experiences in the online space, ranging from positive to neutral to negative. For this item, we want to know more about your negative online experiences. Please select all the negative experiences you have had in online spaces (such as social media) in the past year.",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#28
           options: [
             { value: "1", label: "No negative experience" },
             { value: "2", label: "Harassed/Bullied online" },
@@ -619,204 +1001,350 @@ window.STUDY_MODULES = [
             { value: "6", label: "Imposter Scam,for falsely demanding money from family and friends" },
             { value: "7", label: "Others" },
           ],
-          showIf: { questionId: "hms-mental-health-status-q28", any: true },
+          showIf: { questionId: "hms-mental-health-status-q28", notIn: ["1"] },
           group: "hms-mental-health-status-q28",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-anxiety-gad-7",
+        title: "Anxiety (GAD-7)",
+        questions: [
+        {
+          id: "hms-mental-health-status-q5",
+          type: "matrix",
+          stem: "Over the last 2 weeks, how often have you been bothered by the following problems?",
+          items: [
+            { id: "hms-mental-health-status-q5-i0", label: "Feeling nervous, anxious or on edge" },
+            { id: "hms-mental-health-status-q5-i1", label: "Not being able to stop or control worrying" },
+            { id: "hms-mental-health-status-q5-i2", label: "Worrying too much about different things" },
+            { id: "hms-mental-health-status-q5-i3", label: "Trouble relaxing" },
+            { id: "hms-mental-health-status-q5-i4", label: "Being so restless that it’s hard to sit still" },
+            { id: "hms-mental-health-status-q5-i5", label: "Becoming easily annoyed or irritable" },
+            { id: "hms-mental-health-status-q5-i6", label: "Feeling afraid as if something awful might happen" },
+          ],
+          options: [
+            { value: "1", label: "Not at all" },
+            { value: "2", label: "Several days" },
+            { value: "3", label: "Over half the days" },
+            { value: "4", label: "Nearly every day" },
+          ],
+        },
+        {
+          id: "hms-mental-health-status-q6",
+          type: "nominal",
+          stem: "How difficult have these problems (noted above) made it for you to do your work, take care of things at home, or get along with other people?",
+          options: [
+            { value: "1", label: "Not difficult at all" },
+            { value: "2", label: "Somewhat difficult" },
+            { value: "3", label: "Very difficult" },
+            { value: "4", label: "Extremely difficult" },
+          ],
+          showIf: { questionId: "hms-mental-health-status-q5", any: true },
+          group: "hms-mental-health-status-q5",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-suicide-contagion",
+        title: "Suicide Contagion",
+        questions: [
+        {
+          id: "hms-mental-health-status-q22",
+          type: "nominal",
+          stem: "Are you aware of anyone who died by suicide in your current college or university community during your time as a student there? Please count any faculty, staff, or students who died by suicide, even if they were not on campus when they died (e.g., were on a school break, or on a leave of absence).",
+          options: [
+            { value: "0", label: "No" },
+            { value: "1", label: "Yes" },
+            { value: "3", label: "Unsure (e.g., there was a death and I suspected that it might have been a suicide, but it was never confirmed to be a suicide by my school or the media)" },
+          ],
+        },
+        {
+          id: "hms-mental-health-status-q23",
+          type: "nominal",
+          stem: "When did the confirmed or possible suicide death(s) occur?",
+          options: [
+            { value: "1", label: "More than 1 year ago" },
+            { value: "2", label: "In the past year" },
+            { value: "3", label: "Both (at least one death occurred more than a year ago, and at least one death occurred in the past year)" },
+          ],
+          showIf: { questionId: "hms-mental-health-status-q22", in: ["1", "3"] },
+          group: "hms-mental-health-status-q22",
+        },
+        {
+          id: "hms-mental-health-status-q24",
+          type: "multi",
+          stem: "Please select all statements that apply about the individual who died by suicide or suspected suicide. If there was more than one death during your time as a student, please answer for the first death that you remember on your campus. Select all that apply.",
+          options: [
+            { value: "1", label: "We had a social relationship (e.g., partners, friends, etc.)" },
+            { value: "2", label: "We shared an aspect of our identity (e.g., same race/ethnicity, shared religion, both identify as LGBTQ+, etc.)" },
+            { value: "3", label: "We shared an academic affiliation (e.g., in the same major, department, or student organization)" },
+            { value: "4", label: "We both lived in the same housing building (e.g., dorm, apartment)" },
+            { value: "5", label: "None of these", exclusive: true },
+          ],
+          showIf: { questionId: "hms-mental-health-status-q22", in: ["1", "3"] },
+          group: "hms-mental-health-status-q22",
+        },
+        {
+          id: "hms-mental-health-status-q25",
+          type: "multi",
+          stem: "In which venues was the death by suicide discussed or acknowledged? Select all that apply.",
+          options: [
+            { value: "1", label: "An official institutional communication (e.g., email, emergency alert system)" },
+            { value: "2", label: "A memorial" },
+            { value: "3", label: "News media (e.g., newspapers or blogs)" },
+            { value: "4", label: "Social media (e.g., Reddit, Instagram, Meta, X)" },
+            { value: "5", label: "Word of mouth from my peers" },
+            { value: "6", label: "Other (please specify)", otherFreeText: true },
+            { value: "7", label: "I don’t remember" },
+            { value: "8", label: "None of these" },
+          ],
+          showIf: { questionId: "hms-mental-health-status-q22", in: ["1", "3"] },
+          group: "hms-mental-health-status-q22",
+        },
+        {
+          id: "hms-mental-health-status-q26",
+          type: "nominal",
+          stem: "Thinking about the effect of the person’s suicide on your life, what response is closest to your experience?",
+          options: [
+            { value: "1", label: "The death had little effect on my life" },
+            { value: "2", label: "The death had somewhat of an effect on me but didn’t disrupt my life" },
+            { value: "3", label: "The death disrupted my life for a short time" },
+            { value: "4", label: "The death disrupted my life in a significant or devastating way, but I no longer feel that way" },
+            { value: "5", label: "The death had a significant or devastating effect on me that I still feel" },
+          ],
+          showIf: { questionId: "hms-mental-health-status-q22", in: ["1", "3"] },
+          group: "hms-mental-health-status-q22",
+        },
+        {
+          id: "hms-mental-health-status-q27",
+          type: "nominal",
+          stem: "How close would you describe your relationship with this person?",
+          options: [
+            { value: "1", label: "Not close" },
+            { value: "2", label: "A little close" },
+            { value: "3", label: "Somewhat close" },
+            { value: "4", label: "Moderately close" },
+            { value: "5", label: "Very close" },
+          ],
+          showIf: { questionId: "hms-mental-health-status-q22", in: ["1", "3"] },
+          group: "hms-mental-health-status-q22",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-sde",
+        title: "SDE",
+        questions: [
+        {
+          id: "hms-mental-health-status-q9",
+          type: "binary",
+          stem: "Please answer the following questions as honestly as possible. Do you often feel the desire to eat when you are emotionally upset or stressed? Do you often feel that you can't control what or how much you eat? Do you sometimes make yourself throw up (vomit) to control your weight? Are you often preoccupied with a desire to be thinner? Do you believe yourself to be fat when others say you are thin?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-positive-mental-health",
+        title: "Positive mental health",
+        questions: [
+        {
+          id: "hms-mental-health-status-q1",
+          type: "matrix",
+          stem: "Below are 8 statements with which you may agree or disagree. Using the 1-7 scale below, indicate your agreement with each item by indicating that response for each statement.",
+          items: [
+            { id: "hms-mental-health-status-q1-i0", label: "I lead a purposeful and meaningful life." },
+            { id: "hms-mental-health-status-q1-i1", label: "My social relationships are supportive and rewarding." },
+            { id: "hms-mental-health-status-q1-i2", label: "I am engaged and interested in my daily activities." },
+            { id: "hms-mental-health-status-q1-i3", label: "I actively contribute to the happiness and well-being of others." },
+            { id: "hms-mental-health-status-q1-i4", label: "I am competent and capable in the activities that are important to me." },
+            { id: "hms-mental-health-status-q1-i5", label: "I am a good person and live a good life." },
+            { id: "hms-mental-health-status-q1-i6", label: "I am optimistic about my future." },
+            { id: "hms-mental-health-status-q1-i7", label: "People respect me." },
+          ],
+          options: [
+            { value: "1", label: "Strongly disagree" },
+            { value: "2", label: "Disagree" },
+            { value: "3", label: "Slightly disagree" },
+            { value: "4", label: "Mixed or neither agree nor disagree" },
+            { value: "5", label: "Slightly agree" },
+            { value: "6", label: "Agree" },
+            { value: "7", label: "Strongly agree" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-suicidality",
+        title: "Suicidality",
+        questions: [
+        {
+          id: "hms-mental-health-status-q13",
+          type: "matrix",
+          stem: "In the past year, did you",
+          items: [
+            { id: "hms-mental-health-status-q13-i0", label: "make a plan for attempting suicide?" },
+            { id: "hms-mental-health-status-q13-i1", label: "attempt suicide?" },
+          ],
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        {
+          id: "hms-mental-health-status-q12",
+          type: "binary",
+          stem: "In the past year, did you ever seriously think about attempting suicide?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "2", label: "No" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-academic-impairment",
+        title: "Academic Impairment",
+        questions: [
+        {
+          id: "hms-mental-health-status-q7",
+          type: "nominal",
+          stem: "In the past 4 weeks, how many days have you felt that emotional or mental difficulties have hurt your academic performance?",
+          options: [
+            { value: "1", label: "None" },
+            { value: "2", label: "1-2 days" },
+            { value: "3", label: "3-5 days" },
+            { value: "4", label: "6 or more days" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-non-suicidal-self-injury",
+        title: "Non-suicidal self-injury",
+        questions: [
+        {
+          id: "hms-mental-health-status-q11",
+          type: "multi",
+          stem: "In the past year, have you ever done any of the following with the intent to harm yourself or manage strong emotions? (Select all that apply)",
+          options: [
+            { value: "1", label: "Cut myself" },
+            { value: "2", label: "Burned myself" },
+            { value: "3", label: "Punched or banged myself" },
+            { value: "4", label: "Scratched myself" },
+            { value: "5", label: "Pulled my hair" },
+            { value: "6", label: "Bit myself" },
+            { value: "7", label: "Interfered with wound healing" },
+            { value: "8", label: "Carved words or symbols into skin" },
+            { value: "9", label: "Rubbed sharp objects into skin" },
+            { value: "10", label: "Punched or banged an object to hurt myself" },
+            { value: "11", label: "Other (please specify)", otherFreeText: true },
+            { value: "12", label: "No, none of these", exclusive: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-depression-phq-9",
+        title: "Depression (PHQ-9)",
+        questions: [
+        {
+          id: "hms-mental-health-status-q2",
+          type: "matrix",
+          stem: "Over the last 2 weeks, how often have you been bothered by any of the following problems?",
+          items: [
+            { id: "hms-mental-health-status-q2-i0", label: "Little interest or pleasure in doing things" },
+            { id: "hms-mental-health-status-q2-i1", label: "Feeling down, depressed or hopeless" },
+            { id: "hms-mental-health-status-q2-i2", label: "Trouble falling or staying asleep, or sleeping too much" },
+            { id: "hms-mental-health-status-q2-i3", label: "Feeling tired or having little energy" },
+            { id: "hms-mental-health-status-q2-i4", label: "Poor appetite or overeating" },
+            { id: "hms-mental-health-status-q2-i5", label: "Feeling bad about yourself– or that you are a failure or have let yourself or your family down" },
+            { id: "hms-mental-health-status-q2-i6", label: "Trouble concentrating on things, such as reading the newspaper or watching television" },
+            { id: "hms-mental-health-status-q2-i7", label: "Moving or speaking so slowly that other people could have noticed; or the opposite– being so fidgety or restless that you have been moving around a lot more than usual" },
+            { id: "hms-mental-health-status-q2-i8", label: "Thoughts that you would be better off dead or of hurting yourself in some way" },
+          ],
+          options: [
+            { value: "1", label: "Not at all" },
+            { value: "2", label: "Several days" },
+            { value: "3", label: "More than half the days" },
+            { value: "4", label: "Nearly every day" },
+          ],
+        },
+        {
+          id: "hms-mental-health-status-q3",
+          type: "nominal",
+          stem: "How difficult have these problems (noted above) made it for you to do your work, take care of things at home, or get along with other people?",
+          options: [
+            { value: "1", label: "Not difficult at all" },
+            { value: "2", label: "Somewhat difficult" },
+            { value: "3", label: "Very difficult" },
+            { value: "4", label: "Extremely difficult" },
+          ],
+          showIf: { questionId: "hms-mental-health-status-q2", any: true },
+          group: "hms-mental-health-status-q2",
+        },
+        {
+          id: "hms-mental-health-status-q4",
+          type: "matrix",
+          stem: "Think about the 2-week period in the past year when you experienced the 2 problems below the most frequently. During that period, how often were you bothered by these problems?",
+          // TODO-VERIFY (implicit_order): rows are a subset of hms-mental-health-status-q2's -- pinned to follow it in delivery order
+          items: [
+            { id: "hms-mental-health-status-q4-i0", label: "Little interest or pleasure in doing things" },
+            { id: "hms-mental-health-status-q4-i1", label: "Feeling down, depressed, or hopeless" },
+          ],
+          options: [
+            { value: "1", label: "Not at all" },
+            { value: "2", label: "Several days" },
+            { value: "3", label: "More than half the days" },
+            { value: "4", label: "Nearly every day" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-exercise",
+        title: "Exercise",
+        questions: [
+        {
+          id: "hms-mental-health-status-q19",
+          type: "nominal",
+          stem: "In the past 30 days, about how many hours per week on average did you spend exercising? (Include any exercise of moderate or higher intensity, where “moderate intensity” would be roughly equivalent to brisk walking or bicycling)",
+          options: [
+            { value: "1", label: "Less than 1 hour" },
+            { value: "6", label: "1-2 hours" },
+            { value: "2", label: "2-3 hours" },
+            { value: "3", label: "3-4 hours" },
+            { value: "4", label: "5 or more hours" },
+          ],
         },
         ]
       },
     ]
   },
   {
-    id: "hms-mental-health-service-utilizati",
+    id: "hms-mental-health-service-utilization",
     kind: "standard",
-    title: "Mental Health Service Utilizati",
+    title: "Mental Health Service Utilization",
     sections: [
       {
-        id: "hms-mental-health-service-utilizati-diagnosed-mental-illnesses",
-        title: "Diagnosed mental illnesses",
-        questions: [
-        {
-          id: "hms-mental-health-service-utilizati-q1",
-          type: "multi",
-          stem: "Have you ever been diagnosed with any of the following conditions by a health professional (e.g., primary care doctor, psychiatrist, psychologist, etc.)? (Select all that apply)",
-          options: [
-            { value: "1", label: "Depression (e.g., major depressive disorder, persistent depressive disorder)" },
-            { value: "2", label: "Bipolar (e.g., bipolar I or II, cyclothymia)" },
-            { value: "3", label: "Anxiety (e.g., generalized anxiety disorder, phobias)" },
-            { value: "4", label: "Obsessive-compulsive or related disorders (e.g., obsessive-compulsive disorder, body dysmorphia)" },
-            { value: "5", label: "Trauma and Stressor Related Disorders (e.g, post-traumatic stress disorder)," },
-            { value: "6", label: "Neurodevelopmental disorder or intellectual disability (e.g., attention deficit disorder (ADD), attention deficit hyperactivity disorder (ADHD), intellectual disability, autism spectrum disorder)" },
-            { value: "7", label: "Eating disorder (e.g., anorexia nervosa, bulimia nervosa)" },
-            { value: "8", label: "Psychosis (e.g., schizophrenia, schizo-affective disorder)" },
-            { value: "9", label: "Personality disorder (e.g., antisocial personality disorder, paranoid personality disorder, schizoid personality disorder)" },
-            { value: "10", label: "Substance use disorder (e.g., alcohol abuse, abuse of other drugs)" },
-            { value: "11", label: "No, none of these", exclusive: true },
-            { value: "12", label: "Don’t know" },
-            { value: "13", label: "Others", otherFreeText: true },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q2",
-          type: "multi",
-          stem: "Specifically, which of the following depressive disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Major depressive disorder" },
-            { value: "2", label: "Dysthymia or persistent depressive disorder" },
-            { value: "3", label: "Premenstrual dysphoric disorder" },
-            { value: "4", label: "Others", otherFreeText: true },
-            { value: "5", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["1"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q3",
-          type: "multi",
-          stem: "Specifically, which of the following bipolar and related disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Bipolar I disorder" },
-            { value: "2", label: "Bipolar II disorder" },
-            { value: "3", label: "Cyclothymic disorder" },
-            { value: "4", label: "Others", otherFreeText: true },
-            { value: "5", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["2"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q4",
-          type: "multi",
-          stem: "Specifically, which of the following anxiety disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Generalized anxiety disorder" },
-            { value: "2", label: "Panic disorder" },
-            { value: "3", label: "Agoraphobia" },
-            { value: "4", label: "Specific phobia (e.g., claustrophobia, arachnophobia, etc.)" },
-            { value: "5", label: "Social anxiety disorder (or social phobia)" },
-            { value: "6", label: "Others", otherFreeText: true },
-            { value: "7", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["3"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q5",
-          type: "multi",
-          stem: "Specifically, which of the following obsessive-compulsive or related disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Obsessive-compulsive disorder" },
-            { value: "2", label: "Body dysmorphic disorder" },
-            { value: "3", label: "Hoarding disorder" },
-            { value: "4", label: "Trichotillomania (hair-pulling disorder)" },
-            { value: "5", label: "Excoriation (skin-picking) disorder" },
-            { value: "6", label: "Others", otherFreeText: true },
-            { value: "7", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["4"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q6",
-          type: "multi",
-          stem: "Specifically, which of the following trauma and stressor related disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Post-traumatic stress disorder" },
-            { value: "2", label: "Acute stress disorder" },
-            { value: "3", label: "Adjustment disorder" },
-            { value: "4", label: "Other", otherFreeText: true },
-            { value: "5", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["5"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q7",
-          type: "multi",
-          stem: "Specifically, which of the following neurodevelopmental disorder or intellectual disability were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Attention deficit hyperactivity disorder (ADHD or ADD)" },
-            { value: "2", label: "Other intellectual disability" },
-            { value: "3", label: "Autism spectrum disorder" },
-            { value: "4", label: "Other (please specify)", otherFreeText: true },
-            { value: "5", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["6"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q8",
-          type: "multi",
-          stem: "Specifically, which of the following eating disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Anorexia nervosa" },
-            { value: "2", label: "Bulimia nervosa" },
-            { value: "3", label: "Binge-eating disorder" },
-            { value: "4", label: "Pica" },
-            { value: "5", label: "Avoidant/restrictive food intake disorder (selective eating disorder)" },
-            { value: "6", label: "Other (please specify)", otherFreeText: true },
-            { value: "7", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["7"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q9",
-          type: "multi",
-          stem: "Specifically, which of the following psychotic disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Schizophrenia" },
-            { value: "2", label: "Schizo-affective disorder" },
-            { value: "3", label: "Brief psychotic disorder" },
-            { value: "4", label: "Delusional disorder" },
-            { value: "5", label: "Schizophreniform disorder" },
-            { value: "6", label: "Other (please specify)", otherFreeText: true },
-            { value: "7", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["8"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q10",
-          type: "multi",
-          stem: "Specifically, which of the following personality disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Antisocial personality disorder" },
-            { value: "2", label: "Avoidant personality disorder" },
-            { value: "3", label: "Borderline personality disorder" },
-            { value: "4", label: "Dependent personality disorder" },
-            { value: "5", label: "Histrionic personality disorder" },
-            { value: "6", label: "Narcissistic personality disorder" },
-            { value: "7", label: "Obsessive-Compulsive personality disorder" },
-            { value: "8", label: "Paranoid personality disorder" },
-            { value: "9", label: "Schizoid personality disorder" },
-            { value: "10", label: "Schizotypal personality disorder" },
-            { value: "11", label: "Other (please specify)", otherFreeText: true },
-            { value: "12", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["9"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q11",
-          type: "multi",
-          stem: "Specifically, which of the following substance disorders were you diagnosed with by a professional? (Select all that apply)",
-          options: [
-            { value: "1", label: "Alcohol abuse or other alcohol-related disorders" },
-            { value: "4", label: "Opioid Use Disorder" },
-            { value: "2", label: "Other (please specify)", otherFreeText: true },
-            { value: "3", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q1", includesAny: ["10"] },
-          group: "hms-mental-health-service-utilizati-q1",
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-service-utilizati-disability",
+        id: "hms-mental-health-service-utilization-disability",
         title: "Disability",
         questions: [
         {
-          id: "hms-mental-health-service-utilizati-q12",
+          id: "hms-mental-health-service-utilization-q13",
+          type: "nominal",
+          stem: "Are you registered with the office for disability services/ADA office on this campus as having a disability?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "2", label: "No" },
+            { value: "3", label: "Prefer not to say" },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q12",
           type: "multi",
           stem: "Do you have a disability or disabilities from any of the following categories? (Select all that apply)",
           options: [
@@ -834,32 +1362,20 @@ window.STUDY_MODULES = [
           ],
         },
         {
-          id: "hms-mental-health-service-utilizati-q13",
-          type: "nominal",
-          stem: "Are you registered with the office for disability services/ADA office on this campus as having a disability?",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "2", label: "No" },
-            { value: "3", label: "Prefer not to say" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q14",
+          id: "hms-mental-health-service-utilization-q14",
           type: "nominal",
           stem: "When were you diagnosed with ADHD ?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#7
           options: [
             { value: "0", label: "Prior to starting college" },
             { value: "1", label: "After starting college" },
           ],
-          showIf: [{ questionId: "hms-mental-health-service-utilizati-q7", any: true }, { questionId: "hms-mental-health-service-utilizati-q12", includesAny: ["1"] }],
-          group: "hms-mental-health-service-utilizati-q1",
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] }, { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["1"] }],
+          group: "hms-mental-health-service-utilization-q1",
         },
         {
-          id: "hms-mental-health-service-utilizati-q15",
+          id: "hms-mental-health-service-utilization-q15",
           type: "nominal",
           stem: "What type of treatment for ADHD have you received in the past year?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#14
           options: [
             { value: "0", label: "No treatment" },
             { value: "1", label: "Medication only" },
@@ -867,11 +1383,11 @@ window.STUDY_MODULES = [
             { value: "3", label: "Medication and therapy" },
             { value: "4", label: "Other (please specify)", otherFreeText: true },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q14", any: true },
-          group: "hms-mental-health-service-utilizati-q1",
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] }, { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["1"] }],
+          group: "hms-mental-health-service-utilization-q1",
         },
         {
-          id: "hms-mental-health-service-utilizati-q16",
+          id: "hms-mental-health-service-utilization-q16",
           type: "nominal",
           stem: "What type of treatment for ADHD did you receive prior to starting college?",
           options: [
@@ -881,17 +1397,415 @@ window.STUDY_MODULES = [
             { value: "3", label: "Medication and therapy" },
             { value: "4", label: "Other (please specify)", otherFreeText: true },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q14", in: ["0"] },
-          group: "hms-mental-health-service-utilizati-q1",
+          showIf: { questionId: "hms-mental-health-service-utilization-q14", in: ["0"] },
+          group: "hms-mental-health-service-utilization-q1",
         },
         ]
       },
       {
-        id: "hms-mental-health-service-utilizati-knowledge-of-campus-services",
+        id: "hms-mental-health-service-utilization-use-of-medication",
+        title: "Use of medication",
+        questions: [
+        {
+          id: "hms-mental-health-service-utilization-q41",
+          type: "nominal",
+          stem: "During the past year, for how long, in total, have you taken the following medication(s)?",
+          options: [
+            { value: "1", label: "Less than 1 month" },
+            { value: "2", label: "Between 1 and 2 months" },
+            { value: "3", label: "2 months or more" },
+            { value: "4", label: "Did not take" },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q31",
+          type: "multi",
+          stem: "In the past 12 months have you taken any of the following types of prescription medications? (Please count only those you took, or are taking, several times per week.) (Select all that apply)",
+          options: [
+            { value: "1", label: "Psychostimulants (methylphenidate (Ritalin or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
+            { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
+            { value: "3", label: "Antipsychotics (e.g., haloperidol (Haldol), clozapine (Clozaril), risperidone (Risperdal), olanzapine (Zyprexas), etc.)" },
+            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.)" },
+            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate (Depakote), lamotrigine (Lamictal), carbamazepine (Tegretol), etc.)" },
+            { value: "6", label: "Sleep medications (e.g., zolpidem (Ambien), zaleplon (Sonata), etc.)" },
+            { value: "7", label: "Other medication for mental or emotional health (please specify)", otherFreeText: true },
+            { value: "8", label: "No, none of these", exclusive: true },
+            { value: "9", label: "Don’t know" },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q32",
+          type: "multi",
+          stem: "For what reason(s) do you use Psychostimulants (methylphenidate (Ritalin or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.) ? (Select all that apply)",
+          options: [
+            { value: "1", label: "Mental or emotional health" },
+            { value: "2", label: "Other health reasons" },
+            { value: "3", label: "Academic performance" },
+            { value: "4", label: "Recreation/fun" },
+            { value: "5", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] },
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q33",
+          type: "multi",
+          stem: "For what reason(s) do you use Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.) (Select all that apply)",
+          options: [
+            { value: "1", label: "Mental or emotional health" },
+            { value: "2", label: "Other health reasons" },
+            { value: "3", label: "Academic performance" },
+            { value: "4", label: "Recreation/fun" },
+            { value: "5", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["4"] },
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q34",
+          type: "nominal",
+          stem: "In the past 12 months how many times have you discussed with a doctor or other health professional your use of the medication(s) you just noted?",
+          options: [
+            { value: "1", label: "Not at all" },
+            { value: "2", label: "1-2 times" },
+            { value: "3", label: "3-5 times" },
+            { value: "4", label: "More than 5 times" },
+            { value: "5", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q35",
+          type: "multi",
+          stem: "Who wrote your most recent prescription for the medication(s) you noted in the last question? (Select all that apply)",
+          options: [
+            { value: "1", label: "A general practitioner, nurse practitioner, or primary care physician" },
+            { value: "2", label: "A psychiatrist" },
+            { value: "3", label: "Other type of doctor (please specify)", otherFreeText: true },
+            { value: "4", label: "Took the medication(s) without a prescription" },
+            { value: "5", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q37",
+          type: "binary",
+          stem: "In the past 12 months, have you used your prescription stimulant (e.g., Ritalin, Adderall) in any way not directed by a doctor (e.g., use in greater amounts or more often than directed)?",
+          // TODO-VERIFY (needs_review): no clause matched parent Q#32
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "2", label: "No" },
+          ],
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q32", any: true }, { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] }],
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q38",
+          type: "binary",
+          stem: "In the past 12 months, have you given away, traded, or sold your prescription stimulant (e.g., Ritalin, Adderall)?",
+          // TODO-VERIFY (needs_review): no clause matched parent Q#32
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "2", label: "No" },
+          ],
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q32", any: true }, { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] }],
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q39",
+          type: "nominal",
+          stem: "Where is the prescriber located who wrote most of the prescriptions for your stimulant in the past 12 months?",
+          // TODO-VERIFY (needs_review): no clause matched parent Q#32
+          options: [
+            { value: "1", label: "YourDost" },
+            { value: "2", label: "Urgent Care or the Emergency Room" },
+            { value: "3", label: "Provider in the local community (not on campus)" },
+            { value: "4", label: "Provider in my hometown" },
+            { value: "5", label: "Provider affiliated with a telehealth company" },
+            { value: "6", label: "Others" },
+          ],
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q32", any: true }, { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] }],
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q42",
+          type: "nominal",
+          stem: "How helpful, overall, do you think the medication(s) was or has been for your mental or emotional health?",
+          options: [
+            { value: "1", label: "Very helpful" },
+            { value: "2", label: "Helpful" },
+            { value: "3", label: "Somewhat helpful" },
+            { value: "4", label: "Not helpful" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q43",
+          type: "multi",
+          stem: "Which of the following are important reasons why you received those services? (Select all that apply)",
+          options: [
+            { value: "1", label: "I decided on my own to seek help." },
+            { value: "2", label: "A friend encouraged me to seek help." },
+            { value: "3", label: "A friend pressured me to seek help." },
+            { value: "4", label: "A family member encouraged me to seek help." },
+            { value: "5", label: "A family member pressured me to seek help." },
+            { value: "6", label: "Someone other than a friend or family member encouraged me to seek help (please specify the person's relationship to you).", otherFreeText: true },
+            { value: "7", label: "A campus advisor mandated me to seek help" },
+            { value: "11", label: "A campus advisor referred me to seek help" },
+            { value: "8", label: "I acquired more information about my options from (please specify where)." },
+            { value: "10", label: "A health professional recommended or referred me to seek help." },
+            { value: "12", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] }, { questionId: "hms-mental-health-service-utilization-q22", in: ["2", "3", "4"] }],
+          group: "hms-mental-health-service-utilization-q31",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q40",
+          type: "nominal",
+          stem: "Within the last 12 months, how has ADHD affected your academic performance?",
+          options: [
+            { value: "1", label: "It has not impaired my academic performance" },
+            { value: "2", label: "It has minimally impaired my academic performance" },
+            { value: "3", label: "It has moderately impaired my academic performance" },
+            { value: "4", label: "It has significantly impaired my academic performance" },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q36",
+          type: "multi",
+          stem: "Of the medication(s) you just noted, which are you currently taking? (Select all that apply)",
+          options: [
+            { value: "1", label: "Psychostimulants (methylphenidate (Ritalin, or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
+            { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
+            { value: "3", label: "Antipsychotics (e.g., haloperidol (Haldol), clozapine (Clozaril), risperidone (Risperdal), olanzapine (Zyprexas), etc.)" },
+            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.)" },
+            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate (Depakote), lamotrigine (Lamictal), carbamazepine (Tegretol), etc.)" },
+            { value: "6", label: "Sleep medications (e.g., zolpidem (Ambien), zaleplon (Sonata), etc.)" },
+            { value: "7", label: "Other medication for mental or emotional health (please specify)", otherFreeText: true },
+            { value: "8", label: "None of the above", exclusive: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-service-utilization-insurance",
+        title: "Insurance",
+        questions: [
+        {
+          id: "hms-mental-health-service-utilization-q51",
+          type: "multi",
+          stem: "What is the source of your current health insurance coverage? (Select all that apply)",
+          options: [
+            { value: "1", label: "I do not have any health insurance coverage (uncovered).", exclusive: true },
+            { value: "2", label: "I have health insurance through my parent/guardian(s) or their employer." },
+            { value: "3", label: "I have health insurance through my employer." },
+            { value: "4", label: "I have health insurance through my spouse’s employer." },
+            { value: "5", label: "I have a student health insurance plan." },
+            { value: "6", label: "I have health insurance through an embassy or sponsoring agency for international students." },
+            { value: "7", label: "I have individual health insurance purchased directly from an insurance carrier." },
+            { value: "8", label: "I have Medicaid or other governmental insurance." },
+            { value: "9", label: "I am uncertain about whether I have health insurance." },
+            { value: "10", label: "I have health insurance but am uncertain about where it is from." },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q52",
+          type: "nominal",
+          stem: "Do you know if your health insurance plan would provide any coverage for a visit to a mental health professional (such as a psychiatrist, psychologist, clinical social worker, etc.)?",
+          options: [
+            { value: "1", label: "Yes, it definitely would." },
+            { value: "2", label: "I think it would but am not sure." },
+            { value: "3", label: "I have no idea." },
+            { value: "4", label: "I think it would not but am not sure." },
+            { value: "5", label: "No, it definitely would not." },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q51", includesAny: ["1"] },
+          group: "hms-mental-health-service-utilization-q51",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q53",
+          type: "nominal",
+          stem: "Does your current health insurance plan meet your needs for mental health services?",
+          options: [
+            { value: "1", label: "I have not needed to use my current insurance plan to cover mental health services." },
+            { value: "2", label: "Yes, everything I have needed is covered." },
+            { value: "3", label: "No, the coverage is inadequate to meet my needs." },
+            { value: "4", label: "I’m not sure" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q51", includesAny: ["1"] },
+          group: "hms-mental-health-service-utilization-q51",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q54",
+          type: "multi",
+          stem: "I feel that coverage is inadequate because my plan… (Select all that apply)",
+          options: [
+            { value: "1", label: "…doesn’t cover any mental health services." },
+            { value: "2", label: "…doesn’t cover pre existing conditions." },
+            { value: "3", label: "…doesn’t cover certain conditions." },
+            { value: "4", label: "…has a co-pay that is too expensive." },
+            { value: "5", label: "…has a deductible that is too expensive." },
+            { value: "6", label: "…doesn’t cover certain types of services or providers." },
+            { value: "7", label: "…has a limit on the number of services that are covered." },
+            { value: "8", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q53", in: ["3"] },
+          group: "hms-mental-health-service-utilization-q51",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-service-utilization-use-of-counseling-therapy",
+        title: "Use of counseling/therapy",
+        questions: [
+        {
+          id: "hms-mental-health-service-utilization-q22",
+          type: "nominal",
+          stem: "Have you ever received counseling or therapy for mental health concerns?",
+          options: [
+            { value: "1", label: "No, never" },
+            { value: "2", label: "Yes, prior to starting at this school" },
+            { value: "3", label: "Yes, since starting at this school" },
+            { value: "4", label: "Yes, both of the above (prior to and since starting at this school)" },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q23",
+          type: "nominal",
+          stem: "How many total visits or sessions for counseling or therapy have you had in the past 12 months?",
+          options: [
+            { value: "0", label: "0" },
+            { value: "1", label: "1-3" },
+            { value: "2", label: "4-6" },
+            { value: "3", label: "7-9" },
+            { value: "4", label: "10 or more" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q22", in: ["2", "3", "4"] },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q24",
+          type: "binary",
+          stem: "Are you currently receiving counseling or therapy?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q23", any: true },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q25",
+          type: "multi",
+          stem: "From which of the following did you receive counseling or therapy in the past 12 months? (Select all that apply)",
+          options: [
+            { value: "1", label: "YourDost" },
+            { value: "2", label: "Psychiatric Emergency Services/Psych Emergency Room (ER)" },
+            { value: "3", label: "Inpatient psychiatric hospital" },
+            { value: "4", label: "Partial hospitalization program" },
+            { value: "5", label: "Provider in the local community (not on campus)" },
+            { value: "6", label: "Provider in another location (such as your hometown)" },
+            { value: "7", label: "Other" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q23", any: true },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q26",
+          type: "matrix",
+          stem: "",
+          items: [
+            { id: "hms-mental-health-service-utilization-q26-i0", label: "Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted? [pipe in selected options from the question, “From which of the following places did you receive counseling or therapy?”]" },
+          ],
+          options: [
+            { value: "1", label: "In-person only" },
+            { value: "2", label: "Remote/telehealth only (digital video conferencing, text/app chat, etc…)" },
+            { value: "3", label: "Both in-person and remote" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q23", any: true },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-service-utilization-satisfaction-with-counseling-therapy",
+        title: "Satisfaction with counseling/therapy",
+        questions: [
+        {
+          id: "hms-mental-health-service-utilization-q27",
+          type: "nominal",
+          stem: "How satisfied/dissatisfied are you with your overall therapy or counseling experience?",
+          options: [
+            { value: "6", label: "Very satisfied" },
+            { value: "5", label: "Satisfied" },
+            { value: "4", label: "Somewhat satisfied" },
+            { value: "3", label: "Somewhat dissatisfied" },
+            { value: "2", label: "Dissatisfied" },
+            { value: "1", label: "Very dissatisfied" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q22", any: true },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q29",
+          type: "nominal",
+          stem: "How satisfied/dissatisfied are you with the telemental health services you have received from the following providers? [pipe in the selected options remote/both in-person & remote from the question: Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted?]",
+          options: [
+            { value: "6", label: "Very satisfied" },
+            { value: "5", label: "Satisfied" },
+            { value: "4", label: "Somewhat satisfied" },
+            { value: "3", label: "Somewhat dissatisfied" },
+            { value: "2", label: "Dissatisfied" },
+            { value: "1", label: "Very dissatisfied" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q26", in: ["2", "3"] },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q30",
+          type: "nominal",
+          stem: "How helpful, overall, do you think therapy or counseling was or has been for your mental or emotional health?",
+          options: [
+            { value: "1", label: "Very helpful" },
+            { value: "2", label: "Helpful" },
+            { value: "3", label: "Somewhat helpful" },
+            { value: "4", label: "Not helpful" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q22", notIn: ["1"] },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q28",
+          type: "matrix",
+          stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at [pipe in selected options from:",
+          items: [
+            { id: "hms-mental-health-service-utilization-q28-i0", label: "“From which of the following places did you receive counseling or therapy?”]?" },
+            { id: "hms-mental-health-service-utilization-q28-i1", label: "Convenient hours" },
+            { id: "hms-mental-health-service-utilization-q28-i2", label: "Location [Do not display for digital resources] Quality of therapists/counselors" },
+            { id: "hms-mental-health-service-utilization-q28-i3", label: "Respect for my privacy concerns" },
+            { id: "hms-mental-health-service-utilization-q28-i4", label: "Ability to schedule appointments without long delays" },
+            { id: "hms-mental-health-service-utilization-q28-i5", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
+          ],
+          options: [
+            { value: "6", label: "Very satisfied" },
+            { value: "5", label: "Satisfied" },
+            { value: "4", label: "Somewhat satisfied" },
+            { value: "3", label: "Somewhat dissatisfied" },
+            { value: "2", label: "Dissatisfied" },
+            { value: "1", label: "Very dissatisfied" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-service-utilization-knowledge-of-campus-services",
         title: "Knowledge of campus services",
         questions: [
         {
-          id: "hms-mental-health-service-utilizati-q17",
+          id: "hms-mental-health-service-utilization-q17",
           type: "nominal",
           stem: "How much do you agree with the following statement? If I needed to seek professional help for my mental or emotional health, I would know where to access resources from my school.",
           options: [
@@ -906,69 +1820,11 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-mental-health-service-utilizati-stigma",
-        title: "Stigma",
-        questions: [
-        {
-          id: "hms-mental-health-service-utilizati-q18",
-          type: "matrix",
-          stem: "How much do you agree with the following statements? Most people think less of a person who has received mental health treatment. I would think less of a person who has received mental health treatment.",
-          items: [
-            { id: "hms-mental-health-service-utilizati-q18-i0", label: "Most people think less of a person who has received mental health treatment." },
-            { id: "hms-mental-health-service-utilizati-q18-i1", label: "I would think less of a person who has received mental health treatment." },
-          ],
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-service-utilizati-perceived-need",
-        title: "Perceived need",
-        questions: [
-        {
-          id: "hms-mental-health-service-utilizati-q19",
-          type: "nominal",
-          stem: "How much do you agree with the following statement? In the past 12 months, I needed help for emotional or mental health problems or challenges such as feeling sad, blue, anxious or nervous.",
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q20",
-          type: "nominal",
-          stem: "How much do you agree with the following statement? I currently need help for emotional or mental health problems or challenges such as feeling sad, blue, anxious or nervous.",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#19
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q19", any: true },
-          group: "hms-mental-health-service-utilizati-q19",
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-service-utilizati-help-seeking-intentions",
+        id: "hms-mental-health-service-utilization-help-seeking-intentions",
         title: "Help-seeking intentions",
         questions: [
         {
-          id: "hms-mental-health-service-utilizati-q21",
+          id: "hms-mental-health-service-utilization-q21",
           type: "multi",
           stem: "If you were experiencing serious emotional distress, whom would you talk to about this? (Select all that apply)",
           options: [
@@ -986,374 +1842,264 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-mental-health-service-utilizati-use-of-counseling-therapy",
-        title: "Use of counseling/therapy",
+        id: "hms-mental-health-service-utilization-diagnosed-mental-illnesses",
+        title: "Diagnosed mental illnesses",
         questions: [
         {
-          id: "hms-mental-health-service-utilizati-q22",
-          type: "nominal",
-          stem: "Have you ever received counseling or therapy for mental health concerns?",
+          id: "hms-mental-health-service-utilization-q1",
+          type: "multi",
+          stem: "Have you ever been diagnosed with any of the following conditions by a health professional (e.g., primary care doctor, psychiatrist, psychologist, etc.)? (Select all that apply)",
           options: [
-            { value: "1", label: "No, never" },
-            { value: "2", label: "Yes, prior to starting at this school" },
-            { value: "3", label: "Yes, since starting at this school" },
-            { value: "4", label: "Yes, both of the above (prior to and since starting at this school)" },
+            { value: "1", label: "Depression (e.g., major depressive disorder, persistent depressive disorder)" },
+            { value: "2", label: "Bipolar (e.g., bipolar I or II, cyclothymia)" },
+            { value: "3", label: "Anxiety (e.g., generalized anxiety disorder, phobias)" },
+            { value: "4", label: "Obsessive-compulsive or related disorders (e.g., obsessive-compulsive disorder, body dysmorphia)" },
+            { value: "5", label: "Trauma and Stressor Related Disorders (e.g, post-traumatic stress disorder)," },
+            { value: "6", label: "Neurodevelopmental disorder or intellectual disability (e.g., attention deficit disorder (ADD), attention deficit hyperactivity disorder (ADHD), intellectual disability, autism spectrum disorder)" },
+            { value: "7", label: "Eating disorder (e.g., anorexia nervosa, bulimia nervosa)" },
+            { value: "8", label: "Psychosis (e.g., schizophrenia, schizo-affective disorder)" },
+            { value: "9", label: "Personality disorder (e.g., antisocial personality disorder, paranoid personality disorder, schizoid personality disorder)" },
+            { value: "10", label: "Substance use disorder (e.g., alcohol abuse, abuse of other drugs)" },
+            { value: "11", label: "No, none of these", exclusive: true },
+            { value: "12", label: "Don’t know" },
+            { value: "13", label: "Other mental health condition (please specify)", otherFreeText: true },
           ],
         },
         {
-          id: "hms-mental-health-service-utilizati-q23",
-          type: "nominal",
-          stem: "How many total visits or sessions for counseling or therapy have you had in the past 12 months?",
-          // TODO-VERIFY (needs_review): couldn't resolve option code(s) vs Q#22
+          id: "hms-mental-health-service-utilization-q2",
+          type: "multi",
+          stem: "Specifically, which of the following depressive disorders were you diagnosed with by a professional? (Select all that apply)",
           options: [
-            { value: "0", label: "0" },
-            { value: "1", label: "1-3" },
-            { value: "2", label: "4-6" },
-            { value: "3", label: "7-9" },
-            { value: "4", label: "10 or more" },
+            { value: "1", label: "Major depressive disorder" },
+            { value: "2", label: "Dysthymia or persistent depressive disorder" },
+            { value: "3", label: "Premenstrual dysphoric disorder" },
+            { value: "4", label: "Other (please specify)", otherFreeText: true },
+            { value: "5", label: "Don’t know" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q22", any: true },
-          group: "hms-mental-health-service-utilizati-q22",
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["1"] },
+          group: "hms-mental-health-service-utilization-q1",
         },
         {
-          id: "hms-mental-health-service-utilizati-q24",
+          id: "hms-mental-health-service-utilization-q3",
+          type: "multi",
+          stem: "Specifically, which of the following bipolar and related disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Bipolar I disorder" },
+            { value: "2", label: "Bipolar II disorder" },
+            { value: "3", label: "Cyclothymic disorder" },
+            { value: "4", label: "Other (please specify)", otherFreeText: true },
+            { value: "5", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["2"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q4",
+          type: "multi",
+          stem: "Specifically, which of the following anxiety disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Generalized anxiety disorder" },
+            { value: "2", label: "Panic disorder" },
+            { value: "3", label: "Agoraphobia" },
+            { value: "4", label: "Specific phobia (e.g., claustrophobia, arachnophobia, etc.)" },
+            { value: "5", label: "Social anxiety disorder (or social phobia)" },
+            { value: "6", label: "Other (please specify)", otherFreeText: true },
+            { value: "7", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["3"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q5",
+          type: "multi",
+          stem: "Specifically, which of the following obsessive-compulsive or related disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Obsessive-compulsive disorder" },
+            { value: "2", label: "Body dysmorphic disorder" },
+            { value: "3", label: "Hoarding disorder" },
+            { value: "4", label: "Trichotillomania (hair-pulling disorder)" },
+            { value: "5", label: "Excoriation (skin-picking) disorder" },
+            { value: "6", label: "Other (please specify)", otherFreeText: true },
+            { value: "7", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["4"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q6",
+          type: "multi",
+          stem: "Specifically, which of the following trauma and stressor related disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Post-traumatic stress disorder" },
+            { value: "2", label: "Acute stress disorder" },
+            { value: "3", label: "Adjustment disorder" },
+            { value: "4", label: "Other (please specify)", otherFreeText: true },
+            { value: "5", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["5"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q7",
+          type: "multi",
+          stem: "Specifically, which of the following neurodevelopmental disorder or intellectual disability were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Attention deficit hyperactivity disorder (ADHD or ADD)" },
+            { value: "2", label: "Other intellectual disability" },
+            { value: "3", label: "Autism spectrum disorder" },
+            { value: "4", label: "Other (please specify)", otherFreeText: true },
+            { value: "5", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["6"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q8",
+          type: "multi",
+          stem: "Specifically, which of the following eating disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Anorexia nervosa" },
+            { value: "2", label: "Bulimia nervosa" },
+            { value: "3", label: "Binge-eating disorder" },
+            { value: "4", label: "Pica" },
+            { value: "5", label: "Avoidant/restrictive food intake disorder (selective eating disorder)" },
+            { value: "6", label: "Other (please specify)", otherFreeText: true },
+            { value: "7", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["7"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q9",
+          type: "multi",
+          stem: "Specifically, which of the following psychotic disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Schizophrenia" },
+            { value: "2", label: "Schizo-affective disorder" },
+            { value: "3", label: "Brief psychotic disorder" },
+            { value: "4", label: "Delusional disorder" },
+            { value: "5", label: "Schizophreniform disorder" },
+            { value: "6", label: "Other (please specify)", otherFreeText: true },
+            { value: "7", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["8"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q10",
+          type: "multi",
+          stem: "Specifically, which of the following personality disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Antisocial personality disorder" },
+            { value: "2", label: "Avoidant personality disorder" },
+            { value: "3", label: "Borderline personality disorder" },
+            { value: "4", label: "Dependent personality disorder" },
+            { value: "5", label: "Histrionic personality disorder" },
+            { value: "6", label: "Narcissistic personality disorder" },
+            { value: "7", label: "Obsessive-Compulsive personality disorder" },
+            { value: "8", label: "Paranoid personality disorder" },
+            { value: "9", label: "Schizoid personality disorder" },
+            { value: "10", label: "Schizotypal personality disorder" },
+            { value: "11", label: "Other (please specify)", otherFreeText: true },
+            { value: "12", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["9"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q11",
+          type: "multi",
+          stem: "Specifically, which of the following substance disorders were you diagnosed with by a professional? (Select all that apply)",
+          options: [
+            { value: "1", label: "Alcohol abuse or other alcohol-related disorders" },
+            { value: "4", label: "Opioid Use Disorder" },
+            { value: "2", label: "Other (please specify)", otherFreeText: true },
+            { value: "3", label: "Don’t know" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["10"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-service-utilization-informal-help-seeking",
+        title: "Informal help-seeking",
+        questions: [
+        {
+          id: "hms-mental-health-service-utilization-q46",
+          type: "multi",
+          stem: "In the past 12 months have you received support for your mental or emotional health from any of the following sources? (Select all that apply)",
+          options: [
+            { value: "1", label: "Roommate" },
+            { value: "2", label: "Friend (who is not a roommate)" },
+            { value: "3", label: "Significant other" },
+            { value: "4", label: "Family member" },
+            { value: "5", label: "Religious counselor or other religious contact" },
+            { value: "6", label: "Support group" },
+            { value: "9", label: "Faculty member/professor/instructor" },
+            { value: "10", label: "Staff member" },
+            { value: "7", label: "Other non-clinical source (please specify)", otherFreeText: true },
+            { value: "8", label: "No, none of these", exclusive: true },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q47",
+          type: "nominal",
+          stem: "How helpful was it to discuss these concerns?",
+          options: [
+            { value: "1", label: "Very helpful" },
+            { value: "2", label: "Helpful" },
+            { value: "3", label: "Somewhat helpful" },
+            { value: "4", label: "Not helpful" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q46", includesAny: ["8"] },
+          group: "hms-mental-health-service-utilization-q46",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q49",
           type: "binary",
-          stem: "Are you currently receiving counseling or therapy?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#23
+          stem: "During this school year have you talked with any academic personnel (such as instructors, advisors, or other academic staff) about any mental health problems that were affecting your academic performance?",
           options: [
             { value: "1", label: "Yes" },
             { value: "0", label: "No" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q23", any: true },
-          group: "hms-mental-health-service-utilizati-q22",
         },
         {
-          id: "hms-mental-health-service-utilizati-q25",
+          id: "hms-mental-health-service-utilization-q50",
+          type: "nominal",
+          stem: "Overall, how supportive was the response of the academic personnel with whom you talked?",
+          options: [
+            { value: "1", label: "Very supportive" },
+            { value: "2", label: "Supportive" },
+            { value: "3", label: "Not supportive" },
+            { value: "4", label: "Very unsupportive" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q49", in: ["1"] },
+          group: "hms-mental-health-service-utilization-q49",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q48",
           type: "multi",
-          stem: "From which of the following did you receive counseling or therapy in the past 12 months? (Select all that apply)",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#24
-          // TODO-VERIFY (needs_review): no clause matched parent Q#23
+          stem: "If you had a mental health problem that you believed was affecting your academic performance, which people at your school would you talk to? (Select all that apply)",
           options: [
-            { value: "1", label: "YourDost" },
-            { value: "2", label: "Psychiatric Emergency Services/Psych Emergency Room (ER)" },
-            { value: "3", label: "Inpatient psychiatric hospital" },
-            { value: "4", label: "Partial hospitalization program" },
-            { value: "5", label: "Provider in the local community (not on campus)" },
-            { value: "6", label: "Provider in another location (such as your hometown)" },
-            { value: "7", label: "Other" },
+            { value: "1", label: "Professor/Instructor from one of my classes" },
+            { value: "2", label: "Academic advisor/academic counselor" },
+            { value: "3", label: "Another faculty member or instructor" },
+            { value: "4", label: "Teaching assistant" },
+            { value: "5", label: "Student services staff" },
+            { value: "6", label: "Dean of Students or class dean" },
+            { value: "7", label: "Other (please specify)", otherFreeText: true },
+            { value: "8", label: "No one", exclusive: true },
           ],
-          showIf: [{ questionId: "hms-mental-health-service-utilizati-q24", any: true }, { questionId: "hms-mental-health-service-utilizati-q23", any: true }],
-          group: "hms-mental-health-service-utilizati-q22",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q26",
-          type: "matrix",
-          stem: "Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted? [pipe in selected options from the question, “From which of the following places did you receive counseling or therapy?”]",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#23
-          items: [
-            { id: "hms-mental-health-service-utilizati-q26-i0", label: "Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted? [pipe in selected options from the question, “From which of the following places did you receive counseling or therapy?”]" },
-          ],
-          options: [
-            { value: "1", label: "In-person only" },
-            { value: "2", label: "Remote/telehealth only (digital video conferencing, text/app chat, etc…)" },
-            { value: "3", label: "Both in-person and remote" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q23", any: true },
-          group: "hms-mental-health-service-utilizati-q22",
         },
         ]
       },
       {
-        id: "hms-mental-health-service-utilizati-satisfaction-with-counseling-therapy",
-        title: "Satisfaction with counseling/therapy",
-        questions: [
-        {
-          id: "hms-mental-health-service-utilizati-q27",
-          type: "nominal",
-          stem: "How satisfied/dissatisfied are you with your overall therapy or counseling experience?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#22
-          options: [
-            { value: "6", label: "Very satisfied" },
-            { value: "5", label: "Satisfied" },
-            { value: "4", label: "Somewhat satisfied" },
-            { value: "3", label: "Somewhat dissatisfied" },
-            { value: "2", label: "Dissatisfied" },
-            { value: "1", label: "Very dissatisfied" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q22", any: true },
-          group: "hms-mental-health-service-utilizati-q22",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q28",
-          type: "matrix",
-          stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at [pipe in selected options from: “From which of the following places did you receive counseling or therapy?”]? Convenient hours Location [Do not display for digital resources] Quality of therapists/counselors Respect for my privacy concerns Ability to schedule appointments without long delays Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)",
-          items: [
-            { id: "hms-mental-health-service-utilizati-q28-i0", label: "“From which of the following places did you receive counseling or therapy?”]? Convenient hours" },
-            { id: "hms-mental-health-service-utilizati-q28-i1", label: "Location [Do not display for digital resources] Quality of therapists/counselors" },
-            { id: "hms-mental-health-service-utilizati-q28-i2", label: "Respect for my privacy concerns" },
-            { id: "hms-mental-health-service-utilizati-q28-i3", label: "Ability to schedule appointments without long delays" },
-            { id: "hms-mental-health-service-utilizati-q28-i4", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
-          ],
-          options: [
-            { value: "6", label: "Very satisfied" },
-            { value: "5", label: "Satisfied" },
-            { value: "4", label: "Somewhat satisfied" },
-            { value: "3", label: "Somewhat dissatisfied" },
-            { value: "2", label: "Dissatisfied" },
-            { value: "1", label: "Very dissatisfied" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q29",
-          type: "nominal",
-          stem: "How satisfied/dissatisfied are you with the telemental health services you have received from the following providers? [pipe in the selected options remote/both in-person & remote from the question: Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted?]",
-          // TODO-VERIFY (needs_review): couldn't resolve option code(s) vs Q#26
-          options: [
-            { value: "6", label: "Very satisfied" },
-            { value: "5", label: "Satisfied" },
-            { value: "4", label: "Somewhat satisfied" },
-            { value: "3", label: "Somewhat dissatisfied" },
-            { value: "2", label: "Dissatisfied" },
-            { value: "1", label: "Very dissatisfied" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q26", any: true },
-          group: "hms-mental-health-service-utilizati-q22",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q30",
-          type: "nominal",
-          stem: "How helpful, overall, do you think therapy or counseling was or has been for your mental or emotional health?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#22
-          options: [
-            { value: "1", label: "Very helpful" },
-            { value: "2", label: "Helpful" },
-            { value: "3", label: "Somewhat helpful" },
-            { value: "4", label: "Not helpful" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q22", any: true },
-          group: "hms-mental-health-service-utilizati-q22",
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-service-utilizati-use-of-medication",
-        title: "Use of medication",
-        questions: [
-        {
-          id: "hms-mental-health-service-utilizati-q31",
-          type: "multi",
-          stem: "In the past 12 months have you taken any of the following types of prescription medications? (Please count only those you took, or are taking, several times per week.) (Select all that apply)",
-          options: [
-            { value: "1", label: "Psychostimulants (methylphenidate (Ritalin or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
-            { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
-            { value: "3", label: "Antipsychotics (e.g., haloperidol (Haldol), clozapine (Clozaril), risperidone (Risperdal), olanzapine (Zyprexas), etc.)" },
-            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.)" },
-            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate (Depakote), lamotrigine (Lamictal), carbamazepine (Tegretol), etc.)" },
-            { value: "6", label: "Sleep medications (e.g., zolpidem (Ambien), zaleplon (Sonata), etc.)" },
-            { value: "7", label: "Other medication for mental or emotional health (please specify)", otherFreeText: true },
-            { value: "8", label: "No, none of these", exclusive: true },
-            { value: "9", label: "Don’t know" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q32",
-          type: "multi",
-          stem: "For what reason(s) do you use Psychostimulants (methylphenidate (Ritalin or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.) ? (Select all that apply)",
-          options: [
-            { value: "1", label: "Mental or emotional health" },
-            { value: "2", label: "Other health reasons" },
-            { value: "3", label: "Academic performance" },
-            { value: "4", label: "Recreation/fun" },
-            { value: "5", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q31", includesAny: ["1"] },
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q33",
-          type: "multi",
-          stem: "For what reason(s) do you use Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.) (Select all that apply)",
-          options: [
-            { value: "1", label: "Mental or emotional health" },
-            { value: "2", label: "Other health reasons" },
-            { value: "3", label: "Academic performance" },
-            { value: "4", label: "Recreation/fun" },
-            { value: "5", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q31", includesAny: ["4"] },
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q34",
-          type: "nominal",
-          stem: "In the past 12 months how many times have you discussed with a doctor or other health professional your use of the medication(s) you just noted?",
-          options: [
-            { value: "1", label: "Not at all" },
-            { value: "2", label: "1-2 times" },
-            { value: "3", label: "3-5 times" },
-            { value: "4", label: "More than 5 times" },
-            { value: "5", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q31", excludesAny: ["8"] },
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q35",
-          type: "multi",
-          stem: "Who wrote your most recent prescription for the medication(s) you noted in the last question? (Select all that apply)",
-          options: [
-            { value: "1", label: "A general practitioner, nurse practitioner, or primary care physician" },
-            { value: "2", label: "A psychiatrist" },
-            { value: "3", label: "Other type of doctor (please specify)", otherFreeText: true },
-            { value: "4", label: "Took the medication(s) without a prescription" },
-            { value: "5", label: "Don’t know" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q31", excludesAny: ["8"] },
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q36",
-          type: "multi",
-          stem: "Of the medication(s) you just noted, which are you currently taking? (Select all that apply)",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#31
-          options: [
-            { value: "1", label: "Psychostimulants (methylphenidate (Ritalin, or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
-            { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
-            { value: "3", label: "Antipsychotics (e.g., haloperidol (Haldol), clozapine (Clozaril), risperidone (Risperdal), olanzapine (Zyprexas), etc.)" },
-            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.)" },
-            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate (Depakote), lamotrigine (Lamictal), carbamazepine (Tegretol), etc.)" },
-            { value: "6", label: "Sleep medications (e.g., zolpidem (Ambien), zaleplon (Sonata), etc.)" },
-            { value: "7", label: "Other medication for mental or emotional health (please specify)", otherFreeText: true },
-            { value: "8", label: "None of the above", exclusive: true },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q31", any: true },
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q37",
-          type: "binary",
-          stem: "In the past 12 months, have you used your prescription stimulant (e.g., Ritalin, Adderall) in any way not directed by a doctor (e.g., use in greater amounts or more often than directed)?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#32
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "2", label: "No" },
-          ],
-          showIf: [{ questionId: "hms-mental-health-service-utilizati-q32", any: true }, { questionId: "hms-mental-health-service-utilizati-q31", includesAny: ["1"] }],
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q38",
-          type: "binary",
-          stem: "In the past 12 months, have you given away, traded, or sold your prescription stimulant (e.g., Ritalin, Adderall)?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#32
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "2", label: "No" },
-          ],
-          showIf: [{ questionId: "hms-mental-health-service-utilizati-q32", any: true }, { questionId: "hms-mental-health-service-utilizati-q31", includesAny: ["1"] }],
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q39",
-          type: "nominal",
-          stem: "Where is the prescriber located who wrote most of the prescriptions for your stimulant in the past 12 months?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#32
-          options: [
-            { value: "1", label: "YourDost" },
-            { value: "2", label: "Urgent Care or the Emergency Room" },
-            { value: "3", label: "Provider in the local community (not on campus)" },
-            { value: "4", label: "Provider in my hometown" },
-            { value: "5", label: "Provider affiliated with a telehealth company" },
-            { value: "6", label: "Others" },
-          ],
-          showIf: [{ questionId: "hms-mental-health-service-utilizati-q32", any: true }, { questionId: "hms-mental-health-service-utilizati-q31", includesAny: ["1"] }],
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q40",
-          type: "nominal",
-          stem: "Within the last 12 months, how has ADHD affected your academic performance?",
-          options: [
-            { value: "1", label: "It has not impaired my academic performance" },
-            { value: "2", label: "It has minimally impaired my academic performance" },
-            { value: "3", label: "It has moderately impaired my academic performance" },
-            { value: "4", label: "It has significantly impaired my academic performance" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q41",
-          type: "nominal",
-          stem: "During the past year, for how long, in total, have you taken the following medication(s)?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#31
-          options: [
-            { value: "1", label: "Less than 1 month" },
-            { value: "2", label: "Between 1 and 2 months" },
-            { value: "3", label: "2 months or more" },
-            { value: "4", label: "Did not take" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q31", any: true },
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q42",
-          type: "nominal",
-          stem: "How helpful, overall, do you think the medication(s) was or has been for your mental or emotional health?",
-          options: [
-            { value: "1", label: "Very helpful" },
-            { value: "2", label: "Helpful" },
-            { value: "3", label: "Somewhat helpful" },
-            { value: "4", label: "Not helpful" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q31", excludesAny: ["8"] },
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q43",
-          type: "multi",
-          stem: "Which of the following are important reasons why you received those services? (Select all that apply)",
-          options: [
-            { value: "1", label: "I decided on my own to seek help." },
-            { value: "2", label: "A friend encouraged me to seek help." },
-            { value: "3", label: "A friend pressured me to seek help." },
-            { value: "4", label: "A family member encouraged me to seek help." },
-            { value: "5", label: "A family member pressured me to seek help." },
-            { value: "6", label: "Someone other than a friend or family member encouraged me to seek help (please specify the person's relationship to you).", otherFreeText: true },
-            { value: "7", label: "A campus advisor mandated me to seek help" },
-            { value: "11", label: "A campus advisor referred me to seek help" },
-            { value: "8", label: "I acquired more information about my options from (please specify where)." },
-            { value: "10", label: "A health professional recommended or referred me to seek help." },
-            { value: "12", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: [{ questionId: "hms-mental-health-service-utilizati-q31", excludesAny: ["8"] }, { questionId: "hms-mental-health-service-utilizati-q22", in: ["2", "3", "4"] }],
-          group: "hms-mental-health-service-utilizati-q31",
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-service-utilizati-barriers-to-help-seeking",
+        id: "hms-mental-health-service-utilization-barriers-to-help-seeking",
         title: "Barriers to help-seeking",
         questions: [
         {
-          id: "hms-mental-health-service-utilizati-q44",
-          type: "multi",
-          stem: "In the past 12 months, which of the following factors have caused you to receive fewer services (counseling, therapy, or medications) for your mental or emotional health than you would have otherwise received? (Select all that apply)",
-          options: [
-            { value: "1", label: "No need for services" },
-            { value: "2", label: "Financial reasons (too expensive, not covered by insurance)" },
-            { value: "3", label: "Not enough time" },
-            { value: "4", label: "Not sure where to go" },
-            { value: "5", label: "Difficulty finding an available appointment" },
-            { value: "6", label: "Prefer to deal with issues on my own or with support from family/friends" },
-            { value: "7", label: "Privacy concerns" },
-            { value: "8", label: "People providing services don’t understand me" },
-            { value: "9", label: "Other (please specify)", otherFreeText: true },
-            { value: "10", label: "No barriers", exclusive: true },
-            { value: "11", label: "fear of being mistreated due to my identity/identities" },
-            { value: "12", label: "The clinic or clinician had limits on the number of times I could be seen" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q45",
+          id: "hms-mental-health-service-utilization-q45",
           type: "multi",
           stem: "In the past 12 months, which of the following explain why you have not received medication or therapy for your mental or emotional health? (Select all that apply)",
           options: [
@@ -1372,807 +2118,39 @@ window.STUDY_MODULES = [
             { value: "13", label: "The clinic or clinician had limits on the number of times I could be seen" },
           ],
         },
-        ]
-      },
-      {
-        id: "hms-mental-health-service-utilizati-informal-help-seeking",
-        title: "Informal help-seeking",
-        questions: [
         {
-          id: "hms-mental-health-service-utilizati-q46",
+          id: "hms-mental-health-service-utilization-q44",
           type: "multi",
-          stem: "In the past 12 months have you received support for your mental or emotional health from any of the following sources? (Select all that apply)",
+          stem: "In the past 12 months, which of the following factors have caused you to receive fewer services (counseling, therapy, or medications) for your mental or emotional health than you would have otherwise received? (Select all that apply)",
           options: [
-            { value: "1", label: "Roommate" },
-            { value: "2", label: "Friend (who is not a roommate)" },
-            { value: "3", label: "Significant other" },
-            { value: "4", label: "Family member" },
-            { value: "5", label: "Religious counselor or other religious contact" },
-            { value: "6", label: "Support group" },
-            { value: "9", label: "Faculty member/professor/instructor" },
-            { value: "10", label: "Staff member" },
-            { value: "7", label: "Other non-clinical source (please specify)", otherFreeText: true },
-            { value: "8", label: "No, none of these", exclusive: true },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q47",
-          type: "nominal",
-          stem: "How helpful was it to discuss these concerns?",
-          options: [
-            { value: "1", label: "Very helpful" },
-            { value: "2", label: "Helpful" },
-            { value: "3", label: "Somewhat helpful" },
-            { value: "4", label: "Not helpful" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q46", includesAny: ["8"] },
-          group: "hms-mental-health-service-utilizati-q46",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q48",
-          type: "multi",
-          stem: "If you had a mental health problem that you believed was affecting your academic performance, which people at your school would you talk to? (Select all that apply)",
-          options: [
-            { value: "1", label: "Professor/Instructor from one of my classes" },
-            { value: "2", label: "Academic advisor/academic counselor" },
-            { value: "3", label: "Another faculty member or instructor" },
-            { value: "4", label: "Teaching assistant" },
-            { value: "5", label: "Student services staff" },
-            { value: "6", label: "Dean of Students or class dean" },
-            { value: "7", label: "Other (please specify)", otherFreeText: true },
-            { value: "8", label: "No one", exclusive: true },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q49",
-          type: "binary",
-          stem: "During this school year have you talked with any academic personnel (such as instructors, advisors, or other academic staff) about any mental health problems that were affecting your academic performance?",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q50",
-          type: "nominal",
-          stem: "Overall, how supportive was the response of the academic personnel with whom you talked?",
-          options: [
-            { value: "1", label: "Very supportive" },
-            { value: "2", label: "Supportive" },
-            { value: "3", label: "Not supportive" },
-            { value: "4", label: "Very unsupportive" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q49", in: ["1"] },
-          group: "hms-mental-health-service-utilizati-q49",
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-service-utilizati-insurance",
-        title: "Insurance",
-        questions: [
-        {
-          id: "hms-mental-health-service-utilizati-q51",
-          type: "multi",
-          stem: "What is the source of your current health insurance coverage? (Select all that apply)",
-          options: [
-            { value: "1", label: "I do not have any health insurance coverage (uncovered).", exclusive: true },
-            { value: "2", label: "I have health insurance through my parent/guardian(s) or their employer." },
-            { value: "3", label: "I have health insurance through my employer." },
-            { value: "4", label: "I have health insurance through my spouse’s employer." },
-            { value: "5", label: "I have a student health insurance plan." },
-            { value: "6", label: "I have health insurance through an embassy or sponsoring agency for international students." },
-            { value: "7", label: "I have individual health insurance purchased directly from an insurance carrier." },
-            { value: "8", label: "I have Medicaid or other governmental insurance." },
-            { value: "9", label: "I am uncertain about whether I have health insurance." },
-            { value: "10", label: "I have health insurance but am uncertain about where it is from." },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q52",
-          type: "nominal",
-          stem: "Do you know if your health insurance plan would provide any coverage for a visit to a mental health professional (such as a psychiatrist, psychologist, clinical social worker, etc.)?",
-          options: [
-            { value: "1", label: "Yes, it definitely would." },
-            { value: "2", label: "I think it would but am not sure." },
-            { value: "3", label: "I have no idea." },
-            { value: "4", label: "I think it would not but am not sure." },
-            { value: "5", label: "No, it definitely would not." },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q51", includesAny: ["1"] },
-          group: "hms-mental-health-service-utilizati-q51",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q53",
-          type: "nominal",
-          stem: "Does your current health insurance plan meet your needs for mental health services?",
-          options: [
-            { value: "1", label: "I have not needed to use my current insurance plan to cover mental health services." },
-            { value: "2", label: "Yes, everything I have needed is covered." },
-            { value: "3", label: "No, the coverage is inadequate to meet my needs." },
-            { value: "4", label: "I’m not sure" },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q51", includesAny: ["1"] },
-          group: "hms-mental-health-service-utilizati-q51",
-        },
-        {
-          id: "hms-mental-health-service-utilizati-q54",
-          type: "multi",
-          stem: "I feel that coverage is inadequate because my plan… (Select all that apply)",
-          options: [
-            { value: "1", label: "…doesn’t cover any mental health services." },
-            { value: "2", label: "…doesn’t cover pre existing conditions." },
-            { value: "3", label: "…doesn’t cover certain conditions." },
-            { value: "4", label: "…has a co-pay that is too expensive." },
-            { value: "5", label: "…has a deductible that is too expensive." },
-            { value: "6", label: "…doesn’t cover certain types of services or providers." },
-            { value: "7", label: "…has a limit on the number of services that are covered." },
-            { value: "8", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilizati-q53", in: ["3"] },
-          group: "hms-mental-health-service-utilizati-q51",
-        },
-        ]
-      },
-    ]
-  },
-  {
-    id: "hms-overall-health",
-    kind: "standard",
-    title: "Overall Health",
-    sections: [
-      {
-        id: "hms-overall-health-perceived-health-status",
-        title: "Perceived health status",
-        questions: [
-        {
-          id: "hms-overall-health-q1",
-          type: "nominal",
-          stem: "Overall, how would you describe your health?",
-          options: [
-            { value: "1", label: "Excellent" },
-            { value: "2", label: "Good" },
-            { value: "3", label: "Fair" },
-            { value: "4", label: "Poor" },
-            { value: "5", label: "Very poor" },
+            { value: "1", label: "No need for services" },
+            { value: "2", label: "Financial reasons (too expensive, not covered by insurance)" },
+            { value: "3", label: "Not enough time" },
+            { value: "4", label: "Not sure where to go" },
+            { value: "5", label: "Difficulty finding an available appointment" },
+            { value: "6", label: "Prefer to deal with issues on my own or with support from family/friends" },
+            { value: "7", label: "Privacy concerns" },
+            { value: "8", label: "People providing services don’t understand me" },
+            { value: "9", label: "Other (please specify)", otherFreeText: true },
+            { value: "10", label: "No barriers", exclusive: true },
+            { value: "11", label: "fear of being mistreated due to my identity/identities" },
+            { value: "12", label: "The clinic or clinician had limits on the number of times I could be seen" },
           ],
         },
         ]
       },
       {
-        id: "hms-overall-health-chronic-disease",
-        title: "Chronic disease",
+        id: "hms-mental-health-service-utilization-stigma",
+        title: "Stigma",
         questions: [
         {
-          id: "hms-overall-health-q2",
-          type: "multi",
-          stem: "Have you ever been diagnosed with any of the following health conditions, which required ongoing treatment by a healthcare professional (i.e., chronic diseases)? (Select all that apply)",
-          options: [
-            { value: "1", label: "Diabetes" },
-            { value: "2", label: "High blood pressure" },
-            { value: "3", label: "Asthma" },
-            { value: "4", label: "Thyroid disease (e.g., hypothyroid or hyperthyroid)" },
-            { value: "5", label: "Gastrointestinal disease (e.g., Crohn’s Disease, Ulcerative Colitis)" },
-            { value: "6", label: "Arthritis" },
-            { value: "7", label: "Sickle cell anemia" },
-            { value: "8", label: "Seizure disorders (e.g., epilepsy)" },
-            { value: "9", label: "Cancers" },
-            { value: "10", label: "High cholesterol" },
-            { value: "11", label: "HIV/AIDS" },
-            { value: "12", label: "Other autoimmune disorder (please specify)", otherFreeText: true },
-            { value: "13", label: "Other chronic disease (please specify)", otherFreeText: true },
-            { value: "14", label: "No, never been diagnosed with a chronic disease.", exclusive: true },
-            { value: "15", label: "Don’t know", exclusive: true },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-overall-health-exercise",
-        title: "Exercise",
-        questions: [
-        {
-          id: "hms-overall-health-q3",
-          type: "nominal",
-          stem: "In the past 30 days, about how many hours per week on average did you spend exercising? (Include any exercise of moderate or higher intensity, where “moderate intensity” would be roughly equivalent to brisk walking or bicycling)",
-          options: [
-            { value: "1", label: "Less than 1 hour" },
-            { value: "6", label: "1-2 hours" },
-            { value: "2", label: "2-3 hours" },
-            { value: "3", label: "3-4 hours" },
-            { value: "4", label: "5 or more hours" },
-          ],
-        },
-        {
-          id: "hms-overall-health-q4",
-          type: "nominal",
-          stem: "How much do you agree with the following statement?: My exercise habits have changed a lot since I began as a student at my school.",
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
-          ],
-        },
-        {
-          id: "hms-overall-health-q5",
-          type: "nominal",
-          stem: "How have your exercise habits changed since you began as a student at your school?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#4
-          options: [
-            { value: "1", label: "I exercise more now." },
-            { value: "2", label: "I exercise less now." },
-            { value: "3", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: { questionId: "hms-overall-health-q4", any: true },
-          group: "hms-overall-health-q4",
-        },
-        ]
-      },
-      {
-        id: "hms-overall-health-concussion-tbi-history",
-        title: "Concussion / TBI history",
-        questions: [
-        {
-          id: "hms-overall-health-q6",
-          type: "nominal",
-          stem: "Thinking about any injuries to your head or neck that you have had in your lifetime, were you ever knocked out or did you lose consciousness?",
-          options: [
-            { value: "0", label: "No" },
-            { value: "1", label: "Yes" },
-            { value: "2", label: "I don’t know" },
-            { value: "3", label: "Prefer not to say" },
-          ],
-        },
-        {
-          id: "hms-overall-health-q7",
-          type: "nominal",
-          stem: "Thinking about any injuries to your head or neck that you have had in your lifetime, were you ever dazed or have a gap in your memory from any of the injuries?",
-          options: [
-            { value: "0", label: "No" },
-            { value: "1", label: "Yes" },
-            { value: "2", label: "I don’t know" },
-            { value: "3", label: "Prefer not to say" },
-          ],
-        },
-        {
-          id: "hms-overall-health-q8",
-          type: "text",
-          stem: "How old were you the first time you were dazed or have a gap in your memory from an injury?",
-          options: [],
-          showIf: { questionId: "hms-overall-health-q7", in: ["1"] },
-          group: "hms-overall-health-q7",
-        },
-        {
-          id: "hms-overall-health-q9",
-          type: "nominal",
-          stem: "What was the longest time you were knocked out or unconscious? Would you say… (If you aren’t sure, please make your best guess)",
-          options: [
-            { value: "1", label: "Less than 5 minutes" },
-            { value: "2", label: "Between 5 and 30 minutes" },
-            { value: "3", label: "More than 30 minutes but less than 24 hours" },
-            { value: "4", label: "24 hours or longer" },
-            { value: "5", label: "I don’t know" },
-            { value: "6", label: "Prefer not to say" },
-          ],
-          showIf: { questionId: "hms-overall-health-q6", in: ["1"] },
-          group: "hms-overall-health-q6",
-        },
-        {
-          id: "hms-overall-health-q10",
-          type: "text",
-          stem: "How old were you the first time you were knocked out or lost consciousness?",
-          options: [],
-          showIf: { questionId: "hms-overall-health-q6", in: ["1"] },
-          group: "hms-overall-health-q6",
-        },
-        ]
-      },
-      {
-        id: "hms-overall-health-nutrition",
-        title: "Nutrition",
-        questions: [
-        {
-          id: "hms-overall-health-q11",
-          type: "binary",
-          stem: "Do the following eating practices apply to you?: I am vegetarian.",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        {
-          id: "hms-overall-health-q12",
-          type: "binary",
-          stem: "Do the following eating practices apply to you?: I am vegan.",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        {
-          id: "hms-overall-health-q13",
-          type: "multi",
-          stem: "Why did you become vegan or vegetarian? (Select all that apply)",
-          options: [
-            { value: "1", label: "To improve my overall health." },
-            { value: "2", label: "To manage a specific health condition." },
-            { value: "3", label: "To lose weight." },
-            { value: "4", label: "To spend less money on food." },
-            { value: "5", label: "To reduce my carbon footprint or protect the environment." },
-            { value: "6", label: "Other (text)" },
-          ],
-          showIf: [{ questionId: "hms-overall-health-q12", in: ["1"] }, { questionId: "hms-overall-health-q11", in: ["1"] }],
-          group: "hms-overall-health-q12",
-        },
-        {
-          id: "hms-overall-health-q14",
-          type: "nominal",
-          stem: "Of the reasons selected above, which one is the most important or primary reason for becoming vegan or vegetarian?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#13
-          options: [
-            { value: "1", label: "To improve my overall health." },
-            { value: "2", label: "To manage a specific health condition." },
-            { value: "3", label: "To lose weight." },
-            { value: "4", label: "To spend less money on food." },
-            { value: "5", label: "To reduce my carbon footprint or protect the environment." },
-            { value: "6", label: "Other" },
-          ],
-          showIf: { questionId: "hms-overall-health-q13", any: true },
-          group: "hms-overall-health-q12",
-        },
-        {
-          id: "hms-overall-health-q15",
-          type: "binary",
-          stem: "Do the following eating practices apply to you?: I eat raw food (most of or all of the time).",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        {
-          id: "hms-overall-health-q16",
-          type: "nominal",
-          stem: "How many servings of fruits and vegetables do you usually have per day? (1 serving is 1 medium piece of fruit, 1 cup raw leafy vegetables, ½ cup fresh/frozen/canned fruits/vegetables, ¾ cup fruit/vegetable juice, or ¼ dried fruit)",
-          options: [
-            { value: "1", label: "0" },
-            { value: "2", label: "1-2" },
-            { value: "3", label: "3-4" },
-            { value: "4", label: "5 or more" },
-          ],
-        },
-        ]
-      },
-    ]
-  },
-  {
-    id: "hms-academic-persistence-retention",
-    kind: "standard",
-    title: "Academic Persistence, Retention",
-    sections: [
-      {
-        id: "hms-academic-persistence-retention-stress-mindset",
-        title: "Stress mindset",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q1",
+          id: "hms-mental-health-service-utilization-q18",
           type: "matrix",
-          stem: "Please rate the extent to which you agree or disagree with the following statements. Experiencing stress depletes health and vitality. Experiencing stress enhances performance and productivity. Experiencing stress inhibits learning and growth. The effects of stress are positive and should be utilized.",
+          stem: "How much do you agree with the following statements?",
           items: [
-            { id: "hms-academic-persistence-retention-q1-i0", label: "Please rate the extent to which you agree or disagree with the following statements." },
-            { id: "hms-academic-persistence-retention-q1-i1", label: "Experiencing stress depletes health and vitality." },
-            { id: "hms-academic-persistence-retention-q1-i2", label: "Experiencing stress enhances performance and productivity." },
-            { id: "hms-academic-persistence-retention-q1-i3", label: "Experiencing stress inhibits learning and growth." },
-            { id: "hms-academic-persistence-retention-q1-i4", label: "The effects of stress are positive and should be utilized." },
+            { id: "hms-mental-health-service-utilization-q18-i0", label: "Most people think less of a person who has received mental health treatment." },
+            { id: "hms-mental-health-service-utilization-q18-i1", label: "I would think less of a person who has received mental health treatment." },
           ],
-          options: [
-            { value: "1", label: "Strongly disagree" },
-            { value: "2", label: "Disagree" },
-            { value: "3", label: "Neither agree nor disagree" },
-            { value: "4", label: "Agree" },
-            { value: "5", label: "Strongly agree" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-perceived-competition",
-        title: "Perceived competition",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q2",
-          type: "matrix",
-          stem: "How would you rate the overall competitiveness among students… …in your current classes? …at your school? …in your field of study?",
-          items: [
-            { id: "hms-academic-persistence-retention-q2-i0", label: "in your current classes?" },
-            { id: "hms-academic-persistence-retention-q2-i1", label: "at your school?" },
-            { id: "hms-academic-persistence-retention-q2-i2", label: "in your field of study?" },
-          ],
-          options: [
-            { value: "1", label: "Very competitive" },
-            { value: "2", label: "Competitive" },
-            { value: "3", label: "Somewhat competitive" },
-            { value: "4", label: "Not competitive" },
-            { value: "5", label: "Very uncompetitive" },
-          ],
-        },
-        {
-          id: "hms-academic-persistence-retention-q3",
-          type: "nominal",
-          stem: "How frequently do instructors in your major/field of study grade your work on a curve (adjust grades based on the grade distribution among students in a class)?",
-          options: [
-            { value: "1", label: "Never" },
-            { value: "2", label: "Almost never" },
-            { value: "3", label: "Occasionally/sometimes" },
-            { value: "4", label: "Almost every time" },
-            { value: "5", label: "Every time" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-clarifying-achievement-goals-and-their-impact",
-        title: "Clarifying achievement goals and their impact",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q4",
-          type: "matrix",
-          stem: "How much do you agree with the following statements? It is very important to me to do well in my courses. It is important to me to confirm my intelligence through my schoolwork. In school, I am always seeking opportunities to develop new skills and acquire new knowledge. It is very important to me to feel that my coursework offers me real challenges.",
-          items: [
-            { id: "hms-academic-persistence-retention-q4-i0", label: "It is very important to me to do well in my courses." },
-            { id: "hms-academic-persistence-retention-q4-i1", label: "It is important to me to confirm my intelligence through my schoolwork." },
-            { id: "hms-academic-persistence-retention-q4-i2", label: "In school," },
-            { id: "hms-academic-persistence-retention-q4-i3", label: "I am always seeking opportunities to develop new skills and acquire new knowledge." },
-            { id: "hms-academic-persistence-retention-q4-i4", label: "It is very important to me to feel that my coursework offers me real challenges." },
-          ],
-          options: [
-            { value: "1", label: "Strongly disagree" },
-            { value: "2", label: "Disagree" },
-            { value: "3", label: "Neither agree nor disagree" },
-            { value: "4", label: "Agree" },
-            { value: "5", label: "Strongly agree" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-imposter-syndrome",
-        title: "Imposter Syndrome",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q5",
-          type: "matrix",
-          stem: "How much do you agree with the following statements? I’m afraid people important to me may find out that I’m not as capable as they think I am. Sometimes I feel or believe that my success in life or in academics has been the result of some kind of error. At times, I feel my success was due to some kind of luck. Sometimes I’m afraid others will discover how much knowledge or ability I really lack. I often compare my ability to those around me and think they may be more intelligent than I am.",
-          items: [
-            { id: "hms-academic-persistence-retention-q5-i0", label: "I’m afraid people important to me may find out that" },
-            { id: "hms-academic-persistence-retention-q5-i1", label: "I’m not as capable as they think" },
-            { id: "hms-academic-persistence-retention-q5-i2", label: "I am." },
-            { id: "hms-academic-persistence-retention-q5-i3", label: "Sometimes" },
-            { id: "hms-academic-persistence-retention-q5-i4", label: "I feel or believe that my success in life or in academics has been the result of some kind of error." },
-            { id: "hms-academic-persistence-retention-q5-i5", label: "At times," },
-            { id: "hms-academic-persistence-retention-q5-i6", label: "I feel my success was due to some kind of luck." },
-            { id: "hms-academic-persistence-retention-q5-i7", label: "Sometimes" },
-            { id: "hms-academic-persistence-retention-q5-i8", label: "I’m afraid others will discover how much knowledge or ability" },
-            { id: "hms-academic-persistence-retention-q5-i9", label: "I really lack." },
-            { id: "hms-academic-persistence-retention-q5-i10", label: "I often compare my ability to those around me and think they may be more intelligent than" },
-            { id: "hms-academic-persistence-retention-q5-i11", label: "I am." },
-          ],
-          options: [
-            { value: "1", label: "Strongly disagree" },
-            { value: "2", label: "Disagree" },
-            { value: "3", label: "Neither agree nor disagree" },
-            { value: "4", label: "Agree" },
-            { value: "5", label: "Strongly agree" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-overall-academic-experience",
-        title: "Overall academic experience",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q6",
-          type: "nominal",
-          stem: "How much do you agree with the following statement? If I could make my choice over, I would still choose to enroll at my school.",
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
-          ],
-        },
-        {
-          id: "hms-academic-persistence-retention-q7",
-          type: "multi",
-          stem: "Which of the following challenges are most likely to prevent you from finishing your degree? (Select all that apply)",
-          options: [
-            { value: "1", label: "Financial challenges" },
-            { value: "2", label: "Mental or emotional health problems" },
-            { value: "3", label: "Other health problems (not directly related to mental or emotional health)" },
-            { value: "4", label: "Family obligations" },
-            { value: "5", label: "Family or relationship difficulties" },
-            { value: "6", label: "Academic challenges (struggling to pass classes)" },
-            { value: "7", label: "[if not U.S. citizen, ask→Visa or other challenges related to being a non-U.S. citizen]" },
-            { value: "8", label: "Lack of motivation or desire" },
-            { value: "9", label: "Work or professional commitments" },
-            { value: "10", label: "Career opportunities" },
-            { value: "11", label: "Other challenge(s) (please specify)", otherFreeText: true },
-          ],
-        },
-        {
-          id: "hms-academic-persistence-retention-q8",
-          type: "nominal",
-          stem: "What is the highest degree you plan to pursue?",
-          options: [
-            { value: "1", label: "2-year college degree (associate’s)" },
-            { value: "2", label: "4-year college degree (bachelor’s)" },
-            { value: "3", label: "Master’s degree" },
-            { value: "4", label: "Doctoral degree (JD, MD, Ph D, etc.)" },
-            { value: "5", label: "Other degree (please specify)", otherFreeText: true },
-            { value: "6", label: "Don’t know" },
-          ],
-        },
-        {
-          id: "hms-academic-persistence-retention-q9",
-          type: "nominal",
-          stem: "How much do you agree with the following statements? I have doubts about whether higher education is worth the time, money, and effort that I’m spending on it. My family is very supportive of my educational goals. My professors believe in my potential to succeed academically.",
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
-          ],
-        },
-        {
-          id: "hms-academic-persistence-retention-q10",
-          type: "nominal",
-          stem: "How has it been to adjust to the academic demands of [college/graduate school] since you began as a student at your school?",
-          options: [
-            { value: "1", label: "Very easy" },
-            { value: "2", label: "Easy" },
-            { value: "3", label: "Somewhat easy" },
-            { value: "4", label: "Somewhat difficult" },
-            { value: "5", label: "Difficult" },
-            { value: "6", label: "Very difficult" },
-          ],
-        },
-        {
-          id: "hms-academic-persistence-retention-q11",
-          type: "matrix",
-          stem: "Have you… …decided to pursue a different major since you began as a student at your school? …failed one or more courses since you began as a student at your school?",
-          items: [
-            { id: "hms-academic-persistence-retention-q11-i0", label: "decided to pursue a different major since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-q11-i1", label: "failed one or more courses since you began as a student at your school?" },
-          ],
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-experiences-with-faculty-and-academic-support-services",
-        title: "Experiences with faculty and academic support services",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q12",
-          type: "matrix",
-          stem: "How often have you… ..utilized academic support services (e.g., a writing center, tutor, etc.) since you began as a student at your school? …interacted with faculty during office hours since you began as a student at your school? …interacted with faculty outside of class or office hours (e.g., by phone, email, text, or in person) since you began as a student at your school? …interacted with academic advisors/counselors (e.g., by phone, email, text, or in person) since you began as a student at your school? …interacted with graduate students/teaching assistants (e.g., by phone, email, text, or in person) since you began as a student at your school?",
-          items: [
-            { id: "hms-academic-persistence-retention-q12-i0", label: "utilized academic support services (e.g., a writing center, tutor, etc.) since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-q12-i1", label: "interacted with faculty during office hours since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-q12-i2", label: "interacted with faculty outside of class or office hours (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-q12-i3", label: "interacted with academic advisors/counselors (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-q12-i4", label: "interacted with graduate students/teaching assistants (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
-          ],
-          options: [
-            { value: "1", label: "Everyday or nearly everyday" },
-            { value: "2", label: "2 to 3 times per week" },
-            { value: "3", label: "Once per week" },
-            { value: "4", label: "1 to 2 times per month" },
-            { value: "5", label: "1 to 2 times per semester" },
-            { value: "6", label: "Never" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-faculty-advising-ph-d-students",
-        title: "Faculty Advising (Ph D Students)",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q13",
-          type: "nominal",
-          stem: "Which best describes how your mental and emotional health is affected by your faculty advisor(s)?",
-          options: [
-            { value: "1", label: "Strong negative effect" },
-            { value: "2", label: "Somewhat negative effect" },
-            { value: "3", label: "No effect/neutral effect" },
-            { value: "4", label: "Somewhat positive effect" },
-            { value: "5", label: "Strong positive effect" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-overall-social-experience",
-        title: "Overall social experience",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q14",
-          type: "nominal",
-          stem: "How has it been to… …develop close friendships with other students at your school? …manage your time effectively since you began as a student at your school?",
-          options: [
-            { value: "1", label: "Very easy" },
-            { value: "2", label: "Easy" },
-            { value: "3", label: "Somewhat easy" },
-            { value: "4", label: "Somewhat difficult" },
-            { value: "5", label: "Difficult" },
-            { value: "6", label: "Very difficult" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-issues-affecting-academic-performance",
-        title: "Issues affecting academic performance",
-        questions: [
-        {
-          id: "hms-academic-persistence-retention-q15",
-          type: "matrix",
-          stem: "In the past year, how has the following affected your academic performance? (Select all that apply) Anxiety/stress Depression/suicidality Eating/body image concerns Attention disorder or learning disability (e.g., attention deficit disorder, attention deficit hyperactivity disorder, learning disability) Alcohol/substance use Physical health condition Physical assault Sexual assault",
-          items: [
-            { id: "hms-academic-persistence-retention-q15-i0", label: "(Select all that apply)" },
-            { id: "hms-academic-persistence-retention-q15-i1", label: "Anxiety/stress" },
-            { id: "hms-academic-persistence-retention-q15-i2", label: "Depression/suicidality" },
-            { id: "hms-academic-persistence-retention-q15-i3", label: "Eating/body image concerns" },
-            { id: "hms-academic-persistence-retention-q15-i4", label: "Attention disorder or learning disability (e.g., attention deficit disorder, attention deficit hyperactivity disorder, learning disability)" },
-            { id: "hms-academic-persistence-retention-q15-i5", label: "Alcohol/substance use" },
-            { id: "hms-academic-persistence-retention-q15-i6", label: "Physical health condition" },
-            { id: "hms-academic-persistence-retention-q15-i7", label: "Physical assault" },
-            { id: "hms-academic-persistence-retention-q15-i8", label: "Sexual assault" },
-          ],
-          options: [
-            { value: "1", label: "I did not experience this." },
-            { value: "2", label: "I experienced this but it did not affect my academic performance." },
-            { value: "3", label: "I received a lower grade on one or more exams or projects." },
-            { value: "4", label: "I received a lower grade in one or more courses." },
-            { value: "5", label: "I received an incomplete or dropped one or more courses." },
-            { value: "6", label: "I had a significant disruption in research, practicum, thesis, or dissertation work." },
-            { value: "7", label: "Other (please specify)", otherFreeText: true },
-          ],
-        },
-        ]
-      },
-    ]
-  },
-  {
-    id: "hms-financial-stress",
-    kind: "standard",
-    title: "Financial Stress",
-    sections: [
-      {
-        id: "hms-financial-stress-socioeconom-ic-status",
-        title: "Socioeconom ic status",
-        questions: [
-        {
-          id: "hms-financial-stress-q1",
-          type: "nominal",
-          stem: "How would you describe your financial situation while growing up?",
-          options: [
-            { value: "1", label: "Always stressful" },
-            { value: "2", label: "Often stressful" },
-            { value: "3", label: "Sometimes stressful" },
-            { value: "4", label: "Rarely stressful" },
-            { value: "5", label: "Never stressful" },
-          ],
-        },
-        {
-          id: "hms-financial-stress-q2",
-          type: "nominal",
-          stem: "How would you describe your financial situation right now?",
-          options: [
-            { value: "1", label: "Always stressful" },
-            { value: "2", label: "Often stressful" },
-            { value: "3", label: "Sometimes stressful" },
-            { value: "4", label: "Rarely stressful" },
-            { value: "5", label: "Never stressful" },
-          ],
-        },
-        {
-          id: "hms-financial-stress-q3",
-          type: "nominal",
-          stem: "Within the past 12 months I worried whether our food would run out before we got money to buy more.",
-          options: [
-            { value: "1", label: "Often true" },
-            { value: "2", label: "Sometimes true" },
-            { value: "3", label: "Never true" },
-          ],
-        },
-        {
-          id: "hms-financial-stress-q4",
-          type: "nominal",
-          stem: "Within the past 12 months the food I bought just didn’t last and I didn’t have money to get more.",
-          options: [
-            { value: "1", label: "Often true" },
-            { value: "2", label: "Sometimes true" },
-            { value: "3", label: "Never true" },
-          ],
-        },
-        {
-          id: "hms-financial-stress-q5",
-          type: "multi",
-          stem: "Within the past 12 months, which of the following expenses have you had difficulty paying for? (Select all that apply)",
-          options: [
-            { value: "1", label: "School" },
-            { value: "2", label: "Food" },
-            { value: "3", label: "Transportation" },
-            { value: "4", label: "Childcare" },
-            { value: "5", label: "Health care" },
-            { value: "6", label: "Textbooks or course materials" },
-            { value: "7", label: "Housing" },
-            { value: "8", label: "None of the above", exclusive: true },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-financial-stress-housing-concerns",
-        title: "Housing concerns",
-        questions: [
-        {
-          id: "hms-financial-stress-q6",
-          type: "binary",
-          stem: "Do you have any concerns about your current living situation, like housing conditions, safety, and costs?",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "2", label: "No" },
-          ],
-        },
-        {
-          id: "hms-financial-stress-q7",
-          type: "multi",
-          stem: "What are those concerns? (Select all that apply.",
-          options: [
-            { value: "1", label: "Condition/quality of housing" },
-            { value: "2", label: "Lack of more permanent housing" },
-            { value: "3", label: "Ability to pay for housing or utilities" },
-            { value: "4", label: "Feeling safe" },
-            { value: "5", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: { questionId: "hms-financial-stress-q6", in: ["1"] },
-          group: "hms-financial-stress-q6",
-        },
-        {
-          id: "hms-financial-stress-q8",
-          type: "multi",
-          stem: "Which of the following have you used to pay for educational expenses (room, board, tuition, and fees)? (Select all that apply)",
-          options: [
-            { value: "1", label: "Family resources (parents, relatives, spouse, etc.)" },
-            { value: "2", label: "Your own resources (income from work, work-study, etc.)" },
-            { value: "3", label: "Aid that need not be repaid (grants, scholarships, military, etc.)" },
-            { value: "4", label: "Aid that must be repaid (loans)" },
-            { value: "5", label: "Other sources (please specify)", otherFreeText: true },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-financial-stress-financing-education",
-        title: "Financing education",
-        questions: [
-        {
-          id: "hms-financial-stress-q9",
-          type: "nominal",
-          stem: "To what extent do you agree or disagree with the following statements? I am worried about my ability to pay for school. I am worried about my ability to repay my student loans in the future [if loans selected above] My student loans negatively impact my mental health [if loans selected above]",
           options: [
             { value: "1", label: "Strongly agree" },
             { value: "2", label: "Agree" },
@@ -2185,69 +2163,36 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-financial-stress-scholarship-status",
-        title: "Scholarship Status",
+        id: "hms-mental-health-service-utilization-perceived-need",
+        title: "Perceived need",
         questions: [
         {
-          id: "hms-financial-stress-q10",
-          type: "multi",
-          stem: "Do you receive scholarship funding from your institution? (Select all that apply)",
-          options: [
-            { value: "1", label: "No", exclusive: true },
-            { value: "2", label: "Yes, a need based scholarship" },
-            { value: "3", label: "Yes, an academic scholarship (or merit scholarship)" },
-            { value: "4", label: "Yes, an athletic scholarship" },
-            { value: "5", label: "Other (please specify)", otherFreeText: true },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-financial-stress-spending",
-        title: "Spending",
-        questions: [
-        {
-          id: "hms-financial-stress-q11",
-          type: "binary",
-          stem: "Have you ever participated in sports betting?",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        {
-          id: "hms-financial-stress-q12",
+          id: "hms-mental-health-service-utilization-q19",
           type: "nominal",
-          stem: "How often have you used online sportsbook applications (e.g., Draftkings, Fanduel, Bet MGM) in the past year in order to participate in sports betting?",
-          options: [
-            { value: "1", label: "Often" },
-            { value: "2", label: "Sometimes" },
-            { value: "3", label: "Rarely" },
-            { value: "4", label: "Never" },
-          ],
-          showIf: { questionId: "hms-financial-stress-q11", in: ["1"] },
-          group: "hms-financial-stress-q11",
-        },
-        {
-          id: "hms-financial-stress-q13",
-          type: "matrix",
-          stem: "To what extent to which you agree or disagree with each of the following statements: I feel like sports betting controls my life I have no problem setting limits on how much money I bet on sports",
-          items: [
-            { id: "hms-financial-stress-q13-i0", label: "I feel like sports betting controls my life" },
-            { id: "hms-financial-stress-q13-i1", label: "I have no problem setting limits on how much money" },
-            { id: "hms-financial-stress-q13-i2", label: "I bet on sports" },
-          ],
+          stem: "How much do you agree with the following statement? In the past 12 months, I needed help for emotional or mental health problems or challenges such as feeling sad, blue, anxious or nervous.",
           options: [
             { value: "1", label: "Strongly agree" },
             { value: "2", label: "Agree" },
             { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Neither agree nor disagree" },
-            { value: "5", label: "Somewhat disagree" },
-            { value: "6", label: "Disagree" },
-            { value: "7", label: "Strongly disagree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
           ],
-          showIf: { questionId: "hms-financial-stress-q11", in: ["1"] },
-          group: "hms-financial-stress-q11",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q20",
+          type: "nominal",
+          stem: "How much do you agree with the following statement? I currently need help for emotional or mental health problems or challenges such as feeling sad, blue, anxious or nervous.",
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q19", in: ["3", "2", "1"] },
+          group: "hms-mental-health-service-utilization-q19",
         },
         ]
       },
@@ -2290,24 +2235,24 @@ window.STUDY_MODULES = [
     ]
   },
   {
-    id: "mecamh-coping-responses-and-climate-ch",
+    id: "mecamh-coping-responses-and-climate-change",
     kind: "standard",
-    title: "Coping Responses and Climate Ch",
+    title: "Coping Responses and Climate Change",
     sections: [
       {
-        id: "mecamh-coping-responses-and-climate-ch-climate-change-worry-ojala-2012",
+        id: "mecamh-coping-responses-and-climate-change-climate-change-worry-ojala-2012",
         title: "Climate Change Worry (Ojala 2012)",
         questions: [
         {
-          id: "mecamh-coping-responses-and-climate-ch-q2",
+          id: "mecamh-coping-responses-and-climate-change-q2",
           type: "matrix",
           stem: "How worried are you about the negative consequences of climate change for the following?",
           items: [
-            { id: "mecamh-coping-responses-and-climate-ch-q2-i0", label: "You" },
-            { id: "mecamh-coping-responses-and-climate-ch-q2-i1", label: "People close to you" },
-            { id: "mecamh-coping-responses-and-climate-ch-q2-i2", label: "Future generations" },
-            { id: "mecamh-coping-responses-and-climate-ch-q2-i3", label: "People in economically deprived countries" },
-            { id: "mecamh-coping-responses-and-climate-ch-q2-i4", label: "Animals/Nature" },
+            { id: "mecamh-coping-responses-and-climate-change-q2-i0", label: "You" },
+            { id: "mecamh-coping-responses-and-climate-change-q2-i1", label: "People close to you" },
+            { id: "mecamh-coping-responses-and-climate-change-q2-i2", label: "Future generations" },
+            { id: "mecamh-coping-responses-and-climate-change-q2-i3", label: "People in economically deprived countries" },
+            { id: "mecamh-coping-responses-and-climate-change-q2-i4", label: "Animals/Nature" },
           ],
           options: [
             { value: "1", label: "Not at all" },
@@ -2322,30 +2267,30 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "mecamh-coping-responses-and-climate-ch-coping-responses-ojala-2012",
+        id: "mecamh-coping-responses-and-climate-change-coping-responses-ojala-2012",
         title: "Coping Responses (Ojala 2012)",
         questions: [
         {
-          id: "mecamh-coping-responses-and-climate-ch-q1",
+          id: "mecamh-coping-responses-and-climate-change-q1",
           type: "matrix",
           stem: "When one hears about societal problems such as climate change, one can feel worried or upset. Below is a list and for every item we would like you to indicate how well it applies to what you do or think when you are reminded of climate change. Please choose the alternative you feel best applies to you.",
           items: [
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i0", label: "I think about what I myself can do to help fight the climate problem" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i1", label: "I think about that climate change is something positive since the summers will get warmer in the future" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i2", label: "I trust scientists to most probably come up with a solution in the future" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i3", label: "I think that the problem is exaggerated, the climate problem is not as serious as some scientists claim" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i4", label: "I search for information about what I can do as an individual to help" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i5", label: "I don’t care since I don’t know that much about climate change" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i6", label: "I think about that more and more people have started to take the climate change problem seriously" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i7", label: "I can’t be bothered to care about the climate change issue" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i8", label: "I talk to my family or my friends about what one can do to help improve the climate problem" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i9", label: "I think that nothing really serious will happen during my lifetime" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i10", label: "I have faith in humans and humanity; we can fix most problems" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i11", label: "I think about that as long as there are people engaged in climate change organisations we can manage the problem" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i12", label: "I think that the climate change problem does not concern people living in my country" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i13", label: "I think about that politicians in more and more countries have started to take the climate change issue seriously" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i14", label: "I think that even though it’s a big problem, one has to have hope" },
-            { id: "mecamh-coping-responses-and-climate-ch-q1-i15", label: "I think climate change is natural and therefore nothing to worry about" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i0", label: "I think about what I myself can do to help fight the climate problem" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i1", label: "I think about that climate change is something positive since the summers will get warmer in the future" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i2", label: "I trust scientists to most probably come up with a solution in the future" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i3", label: "I think that the problem is exaggerated, the climate problem is not as serious as some scientists claim" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i4", label: "I search for information about what I can do as an individual to help" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i5", label: "I don’t care since I don’t know that much about climate change" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i6", label: "I think about that more and more people have started to take the climate change problem seriously" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i7", label: "I can’t be bothered to care about the climate change issue" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i8", label: "I talk to my family or my friends about what one can do to help improve the climate problem" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i9", label: "I think that nothing really serious will happen during my lifetime" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i10", label: "I have faith in humans and humanity; we can fix most problems" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i11", label: "I think about that as long as there are people engaged in climate change organisations we can manage the problem" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i12", label: "I think that the climate change problem does not concern people living in my country" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i13", label: "I think about that politicians in more and more countries have started to take the climate change issue seriously" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i14", label: "I think that even though it’s a big problem, one has to have hope" },
+            { id: "mecamh-coping-responses-and-climate-change-q1-i15", label: "I think climate change is natural and therefore nothing to worry about" },
           ],
           options: [
             { value: "1", label: "Not true at all" },
