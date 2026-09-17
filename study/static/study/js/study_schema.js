@@ -1466,7 +1466,7 @@ window.STUDY_MODULES = [
             { value: "3", label: "Provider in the local community (not on campus)" },
             { value: "4", label: "Provider in my hometown" },
             { value: "5", label: "Provider affiliated with a telehealth company" },
-            { value: "6", label: "Others" },
+            { value: "6", label: "Other (please specify)", otherFreeText: true },
           ],
           showIf: { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] },
           group: "hms-mental-health-service-utilization-q31",
@@ -1529,7 +1529,7 @@ window.STUDY_MODULES = [
             { value: "3", label: "It has moderately impaired my academic performance" },
             { value: "4", label: "It has significantly impaired my academic performance" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] },
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] }, { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["1"] }],
           group: "hms-mental-health-service-utilization-q1",
         },
         ]
