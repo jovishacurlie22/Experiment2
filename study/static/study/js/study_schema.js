@@ -1505,17 +1505,6 @@ window.STUDY_MODULES = [
           group: "hms-mental-health-service-utilization-q31",
         },
         {
-          id: "hms-mental-health-service-utilization-q40",
-          type: "nominal",
-          stem: "Within the last 12 months, how has ADHD affected your academic performance?",
-          options: [
-            { value: "1", label: "It has not impaired my academic performance" },
-            { value: "2", label: "It has minimally impaired my academic performance" },
-            { value: "3", label: "It has moderately impaired my academic performance" },
-            { value: "4", label: "It has significantly impaired my academic performance" },
-          ],
-        },
-        {
           id: "hms-mental-health-service-utilization-q36",
           type: "multi",
           stem: "Of the medication(s) you just noted, which are you currently taking? (Select all that apply)",
@@ -1529,6 +1518,19 @@ window.STUDY_MODULES = [
             { value: "7", label: "Other medication for mental or emotional health (please specify)", otherFreeText: true },
             { value: "8", label: "None of the above", exclusive: true },
           ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q40",
+          type: "nominal",
+          stem: "Within the last 12 months, how has ADHD affected your academic performance?",
+          options: [
+            { value: "1", label: "It has not impaired my academic performance" },
+            { value: "2", label: "It has minimally impaired my academic performance" },
+            { value: "3", label: "It has moderately impaired my academic performance" },
+            { value: "4", label: "It has significantly impaired my academic performance" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] },
+          group: "hms-mental-health-service-utilization-q1",
         },
         ]
       },
@@ -1564,7 +1566,7 @@ window.STUDY_MODULES = [
             { value: "4", label: "I think it would not but am not sure." },
             { value: "5", label: "No, it definitely would not." },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q51", includesAny: ["1"] },
+          showIf: { questionId: "hms-mental-health-service-utilization-q51", excludesAny: ["1"] },
           group: "hms-mental-health-service-utilization-q51",
         },
         {
@@ -1577,7 +1579,7 @@ window.STUDY_MODULES = [
             { value: "3", label: "No, the coverage is inadequate to meet my needs." },
             { value: "4", label: "I’m not sure" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q51", includesAny: ["1"] },
+          showIf: { questionId: "hms-mental-health-service-utilization-q51", excludesAny: ["1"] },
           group: "hms-mental-health-service-utilization-q51",
         },
         {
@@ -1692,6 +1694,29 @@ window.STUDY_MODULES = [
           group: "hms-mental-health-service-utilization-q22",
         },
         {
+          id: "hms-mental-health-service-utilization-q28",
+          type: "matrix",
+          stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at [pipe in selected options from:",
+          items: [
+            { id: "hms-mental-health-service-utilization-q28-i0", label: "“From which of the following places did you receive counseling or therapy?”]?" },
+            { id: "hms-mental-health-service-utilization-q28-i1", label: "Convenient hours" },
+            { id: "hms-mental-health-service-utilization-q28-i2", label: "Location [Do not display for digital resources] Quality of therapists/counselors" },
+            { id: "hms-mental-health-service-utilization-q28-i3", label: "Respect for my privacy concerns" },
+            { id: "hms-mental-health-service-utilization-q28-i4", label: "Ability to schedule appointments without long delays" },
+            { id: "hms-mental-health-service-utilization-q28-i5", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
+          ],
+          options: [
+            { value: "6", label: "Very satisfied" },
+            { value: "5", label: "Satisfied" },
+            { value: "4", label: "Somewhat satisfied" },
+            { value: "3", label: "Somewhat dissatisfied" },
+            { value: "2", label: "Dissatisfied" },
+            { value: "1", label: "Very dissatisfied" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q22", notEquals: "1" },
+          group: "hms-mental-health-service-utilization-q22",
+        },
+        {
           id: "hms-mental-health-service-utilization-q29",
           type: "nominal",
           stem: "How satisfied/dissatisfied are you with the telemental health services you have received from the following providers? [pipe in the selected options remote/both in-person & remote from the question: Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted?]",
@@ -1718,27 +1743,6 @@ window.STUDY_MODULES = [
           ],
           showIf: { questionId: "hms-mental-health-service-utilization-q22", notIn: ["1"] },
           group: "hms-mental-health-service-utilization-q22",
-        },
-        {
-          id: "hms-mental-health-service-utilization-q28",
-          type: "matrix",
-          stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at [pipe in selected options from:",
-          items: [
-            { id: "hms-mental-health-service-utilization-q28-i0", label: "“From which of the following places did you receive counseling or therapy?”]?" },
-            { id: "hms-mental-health-service-utilization-q28-i1", label: "Convenient hours" },
-            { id: "hms-mental-health-service-utilization-q28-i2", label: "Location [Do not display for digital resources] Quality of therapists/counselors" },
-            { id: "hms-mental-health-service-utilization-q28-i3", label: "Respect for my privacy concerns" },
-            { id: "hms-mental-health-service-utilization-q28-i4", label: "Ability to schedule appointments without long delays" },
-            { id: "hms-mental-health-service-utilization-q28-i5", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
-          ],
-          options: [
-            { value: "6", label: "Very satisfied" },
-            { value: "5", label: "Satisfied" },
-            { value: "4", label: "Somewhat satisfied" },
-            { value: "3", label: "Somewhat dissatisfied" },
-            { value: "2", label: "Dissatisfied" },
-            { value: "1", label: "Very dissatisfied" },
-          ],
         },
         ]
       },
@@ -1994,7 +1998,7 @@ window.STUDY_MODULES = [
             { value: "2", label: "No" },
             { value: "3", label: "Prefer not to say" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["11"] },
+          showIf: { questionId: "hms-mental-health-service-utilization-q12", excludesAny: ["10", "11"] },
           group: "hms-mental-health-service-utilization-q12",
         },
         {
@@ -2069,7 +2073,7 @@ window.STUDY_MODULES = [
             { value: "3", label: "Somewhat helpful" },
             { value: "4", label: "Not helpful" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q46", includesAny: ["8"] },
+          showIf: { questionId: "hms-mental-health-service-utilization-q46", excludesAny: ["8"] },
           group: "hms-mental-health-service-utilization-q46",
         },
         {
