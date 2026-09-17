@@ -5,7 +5,30 @@ from django.conf import settings
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+def to_epoch_ms(dt):
+    """Convert an aware/naive datetime to Unix epoch milliseconds."""
+    if dt is None:
+        return None
+    return int(dt.timestamp() * 1000)
 
+
+def resolved_epoch_ms(payload, client_dt=None):
+    """Best available epoch_ms for an ActivityEvent. An explicit epoch_ms
+    in the client payload (already unix ms, e.g. from Date.now()) wins,
+    since it's captured at the moment the event actually happened on the
+    client. Falls back to the parsed client_timestamp, then to server
+    receipt time -- so epoch_ms is never left null. payload may be an
+    empty dict for server-only events (e.g. ServerHitLoggingMiddleware)
+    that have no client-sent data to prefer."""
+    explicit = (payload or {}).get("epoch_ms")
+    if explicit is not None:
+        try:
+            return int(explicit)
+        except (TypeError, ValueError):
+            pass
+    if client_dt is not None:
+        return to_epoch_ms(client_dt)
+    return to_epoch_ms(timezone.now())
 
 def _remux_webm(raw_concat_path: str, output_path: str) -> None:
     """Remux a concatenated WebM through ffmpeg to fix Duration/Cues metadata
