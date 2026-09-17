@@ -1058,7 +1058,7 @@ window.STUDY_MODULES = [
             { value: "3", label: "Very difficult" },
             { value: "4", label: "Extremely difficult" },
           ],
-          showIf: { questionId: "hms-mental-health-status-q5", any: true },
+          showIf: { questionId: "hms-mental-health-status-q5", matrixAnyNotEquals: "1" },
           group: "hms-mental-health-status-q5",
         },
         ]
@@ -1301,7 +1301,7 @@ window.STUDY_MODULES = [
             { value: "3", label: "Very difficult" },
             { value: "4", label: "Extremely difficult" },
           ],
-          showIf: { questionId: "hms-mental-health-status-q2", any: true },
+          showIf: { questionId: "hms-mental-health-status-q2", matrixAnyNotEquals: "1" },
           group: "hms-mental-health-status-q2",
         },
         {
@@ -1709,7 +1709,7 @@ window.STUDY_MODULES = [
             { value: "1", label: "Yes" },
             { value: "0", label: "No" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q23", any: true },
+          showIf: { questionId: "hms-mental-health-service-utilization-q23", notEquals: "0" },
           group: "hms-mental-health-service-utilization-q22",
         },
         {
@@ -1725,7 +1725,7 @@ window.STUDY_MODULES = [
             { value: "6", label: "Provider in another location (such as your hometown)" },
             { value: "7", label: "Other" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q23", any: true },
+          showIf: { questionId: "hms-mental-health-service-utilization-q23", notEquals: "0" },
           group: "hms-mental-health-service-utilization-q22",
         },
         {
@@ -1740,7 +1740,7 @@ window.STUDY_MODULES = [
             { value: "2", label: "Remote/telehealth only (digital video conferencing, text/app chat, etc…)" },
             { value: "3", label: "Both in-person and remote" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q23", any: true },
+          showIf: { questionId: "hms-mental-health-service-utilization-q23", notEquals: "0" },
           group: "hms-mental-health-service-utilization-q22",
         },
         ]
@@ -1761,7 +1761,7 @@ window.STUDY_MODULES = [
             { value: "2", label: "Dissatisfied" },
             { value: "1", label: "Very dissatisfied" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q22", any: true },
+          showIf: { questionId: "hms-mental-health-service-utilization-q22", notEquals: "1" },
           group: "hms-mental-health-service-utilization-q22",
         },
         {

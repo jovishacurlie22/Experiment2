@@ -896,6 +896,20 @@ def emit_show_if(cond):
     def one(c):
         if c.get("any"):
             return f'{{ questionId: {js_string(c["questionId"])}, any: true }}'
+        # "equals"/"notEquals" (direct value-comparison clauses) and
+        # "matrixAnyNotEquals" (per-row matrix clauses) carry a single
+        # scalar code value, not a list -- these were being silently
+        # dropped by the loop below, which only ever checked the six
+        # list/array-oriented condition keys, and fell through to the
+        # generic "any: true" fallback for anything else. That fallback
+        # is meant for genuinely UNRESOLVED clauses (see the
+        # needs_review/unresolved_parent review-note paths in
+        # build_hms_content) -- it was never meant to also catch these
+        # two condition types, which resolve to a specific value just
+        # fine and shouldn't degrade to "show unconditionally."
+        for key in ("equals", "notEquals", "matrixAnyNotEquals"):
+            if key in c:
+                return f'{{ questionId: {js_string(c["questionId"])}, {key}: {js_string(c[key])} }}'
         for key in ("in", "notIn", "includes", "excludes", "includesAny", "excludesAny"):
             if key in c:
                 val = c[key]
