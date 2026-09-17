@@ -59,8 +59,8 @@ window.STUDY_CONFIG_ASC = {
     ],
     "hms-mental-health-status": [
       "hms-mental-health-status-eating-and-body-image",
-      "hms-mental-health-status-sleep",
       "hms-mental-health-status-substance-use",
+      "hms-mental-health-status-sleep",
       "hms-mental-health-status-psychosis-screen",
       "hms-mental-health-status-loneliness",
       "hms-mental-health-status-social-media-internet",
@@ -140,15 +140,15 @@ window.STUDY_CONFIG_ASC = {
       "hms-academic-persistence-retention-and-competition-q3",
       "hms-academic-persistence-retention-and-competition-q2",
     ],
-    "hms-mental-health-status-sleep": [
-      "hms-mental-health-status-q21",
-      "hms-mental-health-status-q20",
-    ],
     "hms-mental-health-status-substance-use": [
       "hms-mental-health-status-q15",
       "hms-mental-health-status-q16",
       "hms-mental-health-status-q17",
       "hms-mental-health-status-q18",
+    ],
+    "hms-mental-health-status-sleep": [
+      "hms-mental-health-status-q21",
+      "hms-mental-health-status-q20",
     ],
     "hms-mental-health-status-social-media-internet": [
       "hms-mental-health-status-q28",
@@ -300,8 +300,8 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-status-social-media-internet",
       "hms-mental-health-status-loneliness",
       "hms-mental-health-status-psychosis-screen",
-      "hms-mental-health-status-substance-use",
       "hms-mental-health-status-sleep",
+      "hms-mental-health-status-substance-use",
       "hms-mental-health-status-eating-and-body-image",
     ],
     "hms-academic-persistence-retention-and-competition": [
@@ -414,15 +414,15 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-status-q28",
       "hms-mental-health-status-q29",
     ],
+    "hms-mental-health-status-sleep": [
+      "hms-mental-health-status-q20",
+      "hms-mental-health-status-q21",
+    ],
     "hms-mental-health-status-substance-use": [
       "hms-mental-health-status-q17",
       "hms-mental-health-status-q18",
       "hms-mental-health-status-q15",
       "hms-mental-health-status-q16",
-    ],
-    "hms-mental-health-status-sleep": [
-      "hms-mental-health-status-q20",
-      "hms-mental-health-status-q21",
     ],
     "hms-mental-health-service-utilization-perceived-need": [
       "hms-mental-health-service-utilization-q19",

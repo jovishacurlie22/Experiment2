@@ -2,7 +2,7 @@
    the HMS scoring pipeline output, and MECAMH_question_score_reordered.xlsx.
    Do not hand-edit content here except to resolve a `// TODO-VERIFY` comment --
    regenerate from the workbooks instead for any other change.
-   5 TODO-VERIFY comment(s) below need a human check before this
+   2 TODO-VERIFY comment(s) below need a human check before this
    schema is used with real participants. Ordering lives in study_config.js,
    not here. */
 
@@ -852,24 +852,6 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-mental-health-status-sleep",
-        title: "Sleep",
-        questions: [
-        {
-          id: "hms-mental-health-status-q21",
-          type: "text",
-          stem: "On average, year, how many hours of sleep, on average, do you get on weekend nights?",
-          options: [],
-        },
-        {
-          id: "hms-mental-health-status-q20",
-          type: "text",
-          stem: "On average, how many hours of sleep, on average, do you get on weeknights?",
-          options: [],
-        },
-        ]
-      },
-      {
         id: "hms-mental-health-status-substance-use",
         title: "Substance use",
         questions: [
@@ -926,6 +908,42 @@ window.STUDY_MODULES = [
           ],
           showIf: { questionId: "hms-mental-health-status-q17", excludesAny: ["0"] },
           group: "hms-mental-health-status-q17",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-status-sleep",
+        title: "Sleep",
+        questions: [
+        {
+          id: "hms-mental-health-status-q21",
+          type: "nominal",
+          stem: "On average, year, how many hours of sleep, on average, do you get on weekend nights?",
+          options: [
+            { value: "1", label: "1" },
+            { value: "2", label: "2" },
+            { value: "3", label: "3" },
+            { value: "4", label: "4" },
+            { value: "5", label: "5" },
+            { value: "6", label: "6" },
+            { value: "7", label: "7" },
+            { value: "8", label: "7+" },
+          ],
+        },
+        {
+          id: "hms-mental-health-status-q20",
+          type: "nominal",
+          stem: "On average, how many hours of sleep, on average, do you get on weeknights?",
+          options: [
+            { value: "1", label: "1" },
+            { value: "2", label: "2" },
+            { value: "3", label: "3" },
+            { value: "4", label: "4" },
+            { value: "5", label: "5" },
+            { value: "6", label: "6" },
+            { value: "7", label: "7" },
+            { value: "8", label: "7+" },
+          ],
         },
         ]
       },
@@ -1493,31 +1511,28 @@ window.STUDY_MODULES = [
           id: "hms-mental-health-service-utilization-q37",
           type: "binary",
           stem: "In the past 12 months, have you used your prescription stimulant (e.g., Ritalin, Adderall) in any way not directed by a doctor (e.g., use in greater amounts or more often than directed)?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#32
           options: [
             { value: "1", label: "Yes" },
             { value: "2", label: "No" },
           ],
-          showIf: [{ questionId: "hms-mental-health-service-utilization-q32", any: true }, { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] }],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] },
           group: "hms-mental-health-service-utilization-q31",
         },
         {
           id: "hms-mental-health-service-utilization-q38",
           type: "binary",
           stem: "In the past 12 months, have you given away, traded, or sold your prescription stimulant (e.g., Ritalin, Adderall)?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#32
           options: [
             { value: "1", label: "Yes" },
             { value: "2", label: "No" },
           ],
-          showIf: [{ questionId: "hms-mental-health-service-utilization-q32", any: true }, { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] }],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] },
           group: "hms-mental-health-service-utilization-q31",
         },
         {
           id: "hms-mental-health-service-utilization-q39",
           type: "nominal",
           stem: "Where is the prescriber located who wrote most of the prescriptions for your stimulant in the past 12 months?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#32
           options: [
             { value: "1", label: "YourDost" },
             { value: "2", label: "Urgent Care or the Emergency Room" },
@@ -1526,7 +1541,7 @@ window.STUDY_MODULES = [
             { value: "5", label: "Provider affiliated with a telehealth company" },
             { value: "6", label: "Others" },
           ],
-          showIf: [{ questionId: "hms-mental-health-service-utilization-q32", any: true }, { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] }],
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", includesAny: ["1"] },
           group: "hms-mental-health-service-utilization-q31",
         },
         {
