@@ -75,10 +75,10 @@ window.STUDY_CONFIG_ASC = {
       "hms-mental-health-status-exercise",
     ],
     "hms-mental-health-service-utilization": [
-      "hms-mental-health-service-utilization-disability",
       "hms-mental-health-service-utilization-use-of-medication",
       "hms-mental-health-service-utilization-insurance",
       "hms-mental-health-service-utilization-use-of-counseling-therapy",
+      "hms-mental-health-service-utilization-disability",
       "hms-mental-health-service-utilization-knowledge-of-campus-services",
       "hms-mental-health-service-utilization-help-seeking-intentions",
       "hms-mental-health-service-utilization-satisfaction-with-counseling-therapy",
@@ -175,13 +175,6 @@ window.STUDY_CONFIG_ASC = {
       "hms-mental-health-status-q3",
       "hms-mental-health-status-q4",
     ],
-    "hms-mental-health-service-utilization-disability": [
-      "hms-mental-health-service-utilization-q13",
-      "hms-mental-health-service-utilization-q12",
-      "hms-mental-health-service-utilization-q14",
-      "hms-mental-health-service-utilization-q15",
-      "hms-mental-health-service-utilization-q16",
-    ],
     "hms-mental-health-service-utilization-use-of-medication": [
       "hms-mental-health-service-utilization-q41",
       "hms-mental-health-service-utilization-q40",
@@ -209,6 +202,13 @@ window.STUDY_CONFIG_ASC = {
       "hms-mental-health-service-utilization-q24",
       "hms-mental-health-service-utilization-q25",
       "hms-mental-health-service-utilization-q26",
+    ],
+    "hms-mental-health-service-utilization-disability": [
+      "hms-mental-health-service-utilization-q12",
+      "hms-mental-health-service-utilization-q13",
+      "hms-mental-health-service-utilization-q14",
+      "hms-mental-health-service-utilization-q15",
+      "hms-mental-health-service-utilization-q16",
     ],
     "hms-mental-health-service-utilization-satisfaction-with-counseling-therapy": [
       "hms-mental-health-service-utilization-q27",
@@ -283,9 +283,9 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-service-utilization-help-seeking-intentions",
       "hms-mental-health-service-utilization-knowledge-of-campus-services",
       "hms-mental-health-service-utilization-use-of-counseling-therapy",
+      "hms-mental-health-service-utilization-disability",
       "hms-mental-health-service-utilization-insurance",
       "hms-mental-health-service-utilization-use-of-medication",
-      "hms-mental-health-service-utilization-disability",
     ],
     "hms-mental-health-status": [
       "hms-mental-health-status-exercise",
@@ -465,6 +465,13 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-service-utilization-q25",
       "hms-mental-health-service-utilization-q26",
     ],
+    "hms-mental-health-service-utilization-disability": [
+      "hms-mental-health-service-utilization-q12",
+      "hms-mental-health-service-utilization-q13",
+      "hms-mental-health-service-utilization-q14",
+      "hms-mental-health-service-utilization-q15",
+      "hms-mental-health-service-utilization-q16",
+    ],
     "hms-mental-health-service-utilization-insurance": [
       "hms-mental-health-service-utilization-q51",
       "hms-mental-health-service-utilization-q52",
@@ -485,13 +492,6 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-service-utilization-q36",
       "hms-mental-health-service-utilization-q40",
       "hms-mental-health-service-utilization-q41",
-    ],
-    "hms-mental-health-service-utilization-disability": [
-      "hms-mental-health-service-utilization-q12",
-      "hms-mental-health-service-utilization-q14",
-      "hms-mental-health-service-utilization-q15",
-      "hms-mental-health-service-utilization-q16",
-      "hms-mental-health-service-utilization-q13",
     ],
   },
 };

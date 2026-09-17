@@ -1348,79 +1348,6 @@ window.STUDY_MODULES = [
     title: "Mental Health Service Utilization",
     sections: [
       {
-        id: "hms-mental-health-service-utilization-disability",
-        title: "Disability",
-        questions: [
-        {
-          id: "hms-mental-health-service-utilization-q13",
-          type: "nominal",
-          stem: "Are you registered with the office for disability services/ADA office on this campus as having a disability?",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "2", label: "No" },
-            { value: "3", label: "Prefer not to say" },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilization-q12",
-          type: "multi",
-          stem: "Do you have a disability or disabilities from any of the following categories? (Select all that apply)",
-          options: [
-            { value: "1", label: "Attention deficit/hyperactivity disorders" },
-            { value: "2", label: "Deaf or hard of hearing" },
-            { value: "3", label: "Learning disorders" },
-            { value: "4", label: "Mobility Impairments" },
-            { value: "5", label: "Neurological disorders" },
-            { value: "6", label: "Physical/health related disorders" },
-            { value: "7", label: "Psychological disorder/condition" },
-            { value: "8", label: "Visual impairments" },
-            { value: "9", label: "Other (please specify)", otherFreeText: true },
-            { value: "10", label: "Prefer not to respond", exclusive: true },
-            { value: "11", label: "I do not have a disability", exclusive: true },
-          ],
-        },
-        {
-          id: "hms-mental-health-service-utilization-q14",
-          type: "nominal",
-          stem: "When were you diagnosed with ADHD ?",
-          options: [
-            { value: "0", label: "Prior to starting college" },
-            { value: "1", label: "After starting college" },
-          ],
-          showIf: [{ questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] }, { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["1"] }],
-          group: "hms-mental-health-service-utilization-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilization-q15",
-          type: "nominal",
-          stem: "What type of treatment for ADHD have you received in the past year?",
-          options: [
-            { value: "0", label: "No treatment" },
-            { value: "1", label: "Medication only" },
-            { value: "2", label: "Therapy only (e.g., CBT for ADHD, Executive Function Coaching, etc.)" },
-            { value: "3", label: "Medication and therapy" },
-            { value: "4", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: [{ questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] }, { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["1"] }],
-          group: "hms-mental-health-service-utilization-q1",
-        },
-        {
-          id: "hms-mental-health-service-utilization-q16",
-          type: "nominal",
-          stem: "What type of treatment for ADHD did you receive prior to starting college?",
-          options: [
-            { value: "0", label: "No treatment" },
-            { value: "1", label: "Medication only" },
-            { value: "2", label: "Therapy only (e.g., CBT for ADHD, Executive Function Coaching, etc.)" },
-            { value: "3", label: "Medication and therapy" },
-            { value: "4", label: "Other (please specify)", otherFreeText: true },
-          ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q14", in: ["0"] },
-          group: "hms-mental-health-service-utilization-q1",
-        },
-        ]
-      },
-      {
         id: "hms-mental-health-service-utilization-use-of-medication",
         title: "Use of medication",
         questions: [
@@ -2032,6 +1959,81 @@ window.STUDY_MODULES = [
             { value: "3", label: "Don’t know" },
           ],
           showIf: { questionId: "hms-mental-health-service-utilization-q1", includesAny: ["10"] },
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        ]
+      },
+      {
+        id: "hms-mental-health-service-utilization-disability",
+        title: "Disability",
+        questions: [
+        {
+          id: "hms-mental-health-service-utilization-q12",
+          type: "multi",
+          stem: "Do you have a disability or disabilities from any of the following categories? (Select all that apply)",
+          options: [
+            { value: "1", label: "Attention deficit/hyperactivity disorders" },
+            { value: "2", label: "Deaf or hard of hearing" },
+            { value: "3", label: "Learning disorders" },
+            { value: "4", label: "Mobility Impairments" },
+            { value: "5", label: "Neurological disorders" },
+            { value: "6", label: "Physical/health related disorders" },
+            { value: "7", label: "Psychological disorder/condition" },
+            { value: "8", label: "Visual impairments" },
+            { value: "9", label: "Other (please specify)", otherFreeText: true },
+            { value: "10", label: "Prefer not to respond", exclusive: true },
+            { value: "11", label: "I do not have a disability", exclusive: true },
+          ],
+        },
+        {
+          id: "hms-mental-health-service-utilization-q13",
+          type: "nominal",
+          stem: "Are you registered with the office for disability services/ADA office on this campus as having a disability?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "2", label: "No" },
+            { value: "3", label: "Prefer not to say" },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["11"] },
+          group: "hms-mental-health-service-utilization-q12",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q14",
+          type: "nominal",
+          stem: "When were you diagnosed with ADHD ?",
+          options: [
+            { value: "0", label: "Prior to starting college" },
+            { value: "1", label: "After starting college" },
+          ],
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] }, { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["1"] }],
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q15",
+          type: "nominal",
+          stem: "What type of treatment for ADHD have you received in the past year?",
+          options: [
+            { value: "0", label: "No treatment" },
+            { value: "1", label: "Medication only" },
+            { value: "2", label: "Therapy only (e.g., CBT for ADHD, Executive Function Coaching, etc.)" },
+            { value: "3", label: "Medication and therapy" },
+            { value: "4", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: [{ questionId: "hms-mental-health-service-utilization-q7", includesAny: ["1"] }, { questionId: "hms-mental-health-service-utilization-q12", includesAny: ["1"] }],
+          group: "hms-mental-health-service-utilization-q1",
+        },
+        {
+          id: "hms-mental-health-service-utilization-q16",
+          type: "nominal",
+          stem: "What type of treatment for ADHD did you receive prior to starting college?",
+          options: [
+            { value: "0", label: "No treatment" },
+            { value: "1", label: "Medication only" },
+            { value: "2", label: "Therapy only (e.g., CBT for ADHD, Executive Function Coaching, etc.)" },
+            { value: "3", label: "Medication and therapy" },
+            { value: "4", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: { questionId: "hms-mental-health-service-utilization-q14", in: ["0"] },
           group: "hms-mental-health-service-utilization-q1",
         },
         ]
