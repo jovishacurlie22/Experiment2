@@ -19,7 +19,7 @@ window.STUDY_MODULES = [
         {
           id: "demographics-q1",
           type: "numeric",
-          stem: "How old were you on your last birthday?",
+          stem: "How old are you?",
           options: [],
         },
         ]
@@ -341,55 +341,6 @@ window.STUDY_MODULES = [
     title: "Financial Stress",
     sections: [
       {
-        id: "hms-financial-stress-spending",
-        title: "Spending",
-        questions: [
-        {
-          id: "hms-financial-stress-q11",
-          type: "binary",
-          stem: "Have you ever participated in sports betting?",
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
-          ],
-        },
-        {
-          id: "hms-financial-stress-q12",
-          type: "nominal",
-          stem: "How often have you used online sportsbook applications (e.g., Draftkings, Fanduel, Bet MGM) in the past year in order to participate in sports betting?",
-          options: [
-            { value: "1", label: "Often" },
-            { value: "2", label: "Sometimes" },
-            { value: "3", label: "Rarely" },
-            { value: "4", label: "Never" },
-          ],
-          showIf: { questionId: "hms-financial-stress-q11", in: ["1"] },
-          group: "hms-financial-stress-q11",
-        },
-        {
-          id: "hms-financial-stress-q13",
-          type: "matrix",
-          stem: "To what extent to which you agree or disagree with each of the following statements:",
-          items: [
-            { id: "hms-financial-stress-q13-i0", label: "I feel like sports betting controls my life" },
-            { id: "hms-financial-stress-q13-i1", label: "I have no problem setting limits on how much money" },
-            { id: "hms-financial-stress-q13-i2", label: "I bet on sports" },
-          ],
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Neither agree nor disagree" },
-            { value: "5", label: "Somewhat disagree" },
-            { value: "6", label: "Disagree" },
-            { value: "7", label: "Strongly disagree" },
-          ],
-          showIf: { questionId: "hms-financial-stress-q11", in: ["1"] },
-          group: "hms-financial-stress-q11",
-        },
-        ]
-      },
-      {
         id: "hms-financial-stress-housing-concerns",
         title: "Housing concerns",
         questions: [
@@ -431,8 +382,8 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-financial-stress-socioeconom-ic-status",
-        title: "Socioeconom ic status",
+        id: "hms-financial-stress-socioeconomic-status",
+        title: "Socioeconomic status",
         questions: [
         {
           id: "hms-financial-stress-q2",
@@ -519,6 +470,203 @@ window.STUDY_MODULES = [
         questions: [
         {
           id: "hms-financial-stress-q9",
+          type: "nominal",
+          stem: "To what extent do you agree or disagree with the following statements? I am worried about my ability to pay for school. I am worried about my ability to repay my student loans in the future [if loans selected above] My student loans negatively impact my mental health [if loans selected above]",
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+        },
+        ]
+      },
+    ]
+  },
+  {
+    id: "hms-sheet1",
+    kind: "standard",
+    title: "Sheet1",
+    sections: [
+      {
+        id: "hms-sheet1-spending",
+        title: "Spending",
+        questions: [
+        {
+          id: "hms-sheet1-q11",
+          type: "binary",
+          stem: "Have you ever participated in sports betting?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
+        {
+          id: "hms-sheet1-q12",
+          type: "nominal",
+          stem: "How often have you used online sportsbook applications (e.g., Dream11,Parimatch,Dafabet) in the past year in order to participate in sports betting?",
+          options: [
+            { value: "1", label: "Often" },
+            { value: "2", label: "Sometimes" },
+            { value: "3", label: "Rarely" },
+            { value: "4", label: "Never" },
+          ],
+          showIf: { questionId: "hms-sheet1-q11", in: ["1"] },
+          group: "hms-sheet1-q11",
+        },
+        {
+          id: "hms-sheet1-q13",
+          type: "matrix",
+          stem: "To what extent to which you agree or disagree with each of the following statements:I feel like sports betting controls my life.",
+          items: [
+            { id: "hms-sheet1-q13-i0", label: "I have no problem setting limits on how much money" },
+            { id: "hms-sheet1-q13-i1", label: "I bet on sports." },
+          ],
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+          showIf: { questionId: "hms-sheet1-q11", in: ["1"] },
+          group: "hms-sheet1-q11",
+        },
+        ]
+      },
+      {
+        id: "hms-sheet1-housing-concerns",
+        title: "Housing concerns",
+        questions: [
+        {
+          id: "hms-sheet1-q6",
+          type: "binary",
+          stem: "Do you have any concerns about your current living situation, like housing conditions, safety, and costs?",
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "2", label: "No" },
+          ],
+        },
+        {
+          id: "hms-sheet1-q7",
+          type: "multi",
+          stem: "What are those concerns? (Select all that apply.",
+          options: [
+            { value: "1", label: "Condition/quality of housing" },
+            { value: "2", label: "Lack of more permanent housing" },
+            { value: "3", label: "Ability to pay for housing or utilities" },
+            { value: "4", label: "Feeling safe" },
+            { value: "5", label: "Other (please specify)", otherFreeText: true },
+          ],
+          showIf: { questionId: "hms-sheet1-q6", in: ["1"] },
+          group: "hms-sheet1-q6",
+        },
+        {
+          id: "hms-sheet1-q8",
+          type: "multi",
+          stem: "Which of the following have you used to pay for educational expenses (room, board, tuition, and fees)? (Select all that apply)",
+          options: [
+            { value: "1", label: "Family resources (parents, relatives, spouse, etc.)" },
+            { value: "2", label: "Your own resources (income from work, work-study, etc.)" },
+            { value: "3", label: "Aid that need not be repaid (grants, scholarships, military, etc.)" },
+            { value: "4", label: "Aid that must be repaid (loans)" },
+            { value: "5", label: "Other sources (please specify)", otherFreeText: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-sheet1-socioeconomic-status",
+        title: "Socioeconomic status",
+        questions: [
+        {
+          id: "hms-sheet1-q2",
+          type: "nominal",
+          stem: "How would you describe your financial situation right now?",
+          options: [
+            { value: "1", label: "Always stressful" },
+            { value: "2", label: "Often stressful" },
+            { value: "3", label: "Sometimes stressful" },
+            { value: "4", label: "Rarely stressful" },
+            { value: "5", label: "Never stressful" },
+          ],
+        },
+        {
+          id: "hms-sheet1-q1",
+          type: "nominal",
+          stem: "How would you describe your financial situation while growing up?",
+          options: [
+            { value: "1", label: "Always stressful" },
+            { value: "2", label: "Often stressful" },
+            { value: "3", label: "Sometimes stressful" },
+            { value: "4", label: "Rarely stressful" },
+            { value: "5", label: "Never stressful" },
+          ],
+        },
+        {
+          id: "hms-sheet1-q4",
+          type: "nominal",
+          stem: "Within the past 12 months the food I bought just didn’t last and I didn’t have money to get more.",
+          options: [
+            { value: "1", label: "Often true" },
+            { value: "2", label: "Sometimes true" },
+            { value: "3", label: "Never true" },
+          ],
+        },
+        {
+          id: "hms-sheet1-q3",
+          type: "nominal",
+          stem: "Within the past 12 months I worried whether our food would run out before we got money to buy more.",
+          options: [
+            { value: "1", label: "Often true" },
+            { value: "2", label: "Sometimes true" },
+            { value: "3", label: "Never true" },
+          ],
+        },
+        {
+          id: "hms-sheet1-q5",
+          type: "multi",
+          stem: "Within the past 12 months, which of the following expenses have you had difficulty paying for? (Select all that apply)",
+          options: [
+            { value: "1", label: "School" },
+            { value: "2", label: "Food" },
+            { value: "3", label: "Transportation" },
+            { value: "4", label: "Childcare" },
+            { value: "5", label: "Health care" },
+            { value: "6", label: "Textbooks or course materials" },
+            { value: "7", label: "Housing" },
+            { value: "8", label: "None of the above", exclusive: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-sheet1-scholarship-status",
+        title: "Scholarship Status",
+        questions: [
+        {
+          id: "hms-sheet1-q10",
+          type: "multi",
+          stem: "Do you receive scholarship funding from your institution? (Select all that apply)",
+          options: [
+            { value: "1", label: "No", exclusive: true },
+            { value: "2", label: "Yes, a need based scholarship" },
+            { value: "3", label: "Yes, an academic scholarship (or merit scholarship)" },
+            { value: "4", label: "Yes, an athletic scholarship" },
+            { value: "5", label: "Other (please specify)", otherFreeText: true },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-sheet1-financing-education",
+        title: "Financing education",
+        questions: [
+        {
+          id: "hms-sheet1-q9",
           type: "nominal",
           stem: "To what extent do you agree or disagree with the following statements? I am worried about my ability to pay for school. I am worried about my ability to repay my student loans in the future [if loans selected above] My student loans negatively impact my mental health [if loans selected above]",
           options: [
