@@ -2,7 +2,7 @@
    the HMS scoring pipeline output, and MECAMH_question_score_reordered.xlsx.
    Do not hand-edit content here except to resolve a `// TODO-VERIFY` comment --
    regenerate from the workbooks instead for any other change.
-   2 TODO-VERIFY comment(s) below need a human check before this
+   4 TODO-VERIFY comment(s) below need a human check before this
    schema is used with real participants. Ordering lives in study_config.js,
    not here. */
 
@@ -356,7 +356,7 @@ window.STUDY_MODULES = [
         {
           id: "hms-financial-stress-q12",
           type: "nominal",
-          stem: "How often have you used online sportsbook applications (e.g., Dream11,Parimatch,Dafabet) in the past year in order to participate in sports betting?",
+          stem: "How often have you used online sportsbook applications (e.g., Draftkings, Fanduel, Bet MGM) in the past year in order to participate in sports betting?",
           options: [
             { value: "1", label: "Often" },
             { value: "2", label: "Sometimes" },
@@ -369,18 +369,19 @@ window.STUDY_MODULES = [
         {
           id: "hms-financial-stress-q13",
           type: "matrix",
-          stem: "To what extent to which you agree or disagree with each of the following statements:I feel like sports betting controls my life.",
+          stem: "To what extent to which you agree or disagree with each of the following statements:",
           items: [
-            { id: "hms-financial-stress-q13-i0", label: "I have no problem setting limits on how much money" },
-            { id: "hms-financial-stress-q13-i1", label: "I bet on sports." },
+            { id: "hms-financial-stress-q13-i0", label: "I feel like sports betting controls my life." },
+            { id: "hms-financial-stress-q13-i1", label: "I have no problem setting limits on how much money I bet on sports." },
           ],
           options: [
             { value: "1", label: "Strongly agree" },
             { value: "2", label: "Agree" },
             { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
+            { value: "4", label: "Neither agree nor disagree" },
+            { value: "5", label: "Somewhat disagree" },
+            { value: "6", label: "Disagree" },
+            { value: "7", label: "Strongly disagree" },
           ],
           showIf: { questionId: "hms-financial-stress-q11", in: ["1"] },
           group: "hms-financial-stress-q11",
@@ -429,8 +430,8 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-financial-stress-socioeconomic-status",
-        title: "Socioeconomic status",
+        id: "hms-financial-stress-socioeconom-ic-status",
+        title: "Socioeconom ic status",
         questions: [
         {
           id: "hms-financial-stress-q2",
@@ -1637,6 +1638,7 @@ window.STUDY_MODULES = [
           id: "hms-mental-health-service-utilization-q36",
           type: "multi",
           stem: "Of the medication(s) you just noted, which are you currently taking? (Select all that apply)",
+          // TODO-VERIFY (needs_review): no clause matched parent Q#31
           options: [
             { value: "1", label: "Psychostimulants (methylphenidate (Ritalin, or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
             { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
@@ -1647,7 +1649,7 @@ window.STUDY_MODULES = [
             { value: "7", label: "Other medication for mental or emotional health (please specify)", otherFreeText: true },
             { value: "8", label: "None of the above", exclusive: true },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", any: true },
           group: "hms-mental-health-service-utilization-q31",
         },
         {
@@ -1691,13 +1693,14 @@ window.STUDY_MODULES = [
           id: "hms-mental-health-service-utilization-q41",
           type: "nominal",
           stem: "During the past year, for how long, in total, have you taken the following medication(s)?",
+          // TODO-VERIFY (needs_review): no clause matched parent Q#31
           options: [
             { value: "1", label: "Less than 1 month" },
             { value: "2", label: "Between 1 and 2 months" },
             { value: "3", label: "2 months or more" },
             { value: "4", label: "Did not take" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", any: true },
           group: "hms-mental-health-service-utilization-q31",
         },
         {
