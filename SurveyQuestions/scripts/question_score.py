@@ -238,6 +238,17 @@ SKIP_LOGIC_KEYWORDS = [
     "skip if", "skip to", "conditional on",
     "if selected", "is selected for", "based on embedded skip logic",
     "respondent's age is between", "respondent selects", "respondent's",
+    # "Pipe in selected options from: 'PARENT'" carries no display-if verb
+    # at all, so it was previously dropped by this gate entirely -- the
+    # quoted parent phrase never reached _find_parent_question_indices(),
+    # leaving these questions with no Question Role/Parent Question # and
+    # (downstream, in generate_all_study_js.py) no _parent_ids for
+    # order_module_by_direction()'s union-find to group them with their
+    # parent. The parent-text quote inside "pipe in ... from: 'X'" is
+    # still found and exact/fuzzy-matched the same way any other quoted
+    # parent phrase is -- this keyword just lets the note text through so
+    # that matching can happen at all.
+    "pipe in",
 ]
 
 

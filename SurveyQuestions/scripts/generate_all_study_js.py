@@ -783,17 +783,68 @@ def order_module_by_direction(module, direction):
     `_score` per question; `_role` defaults to Independent when absent."""
     sign = 1 if direction == "ascending" else -1
 
-    section_scores = []
+    # Per-section anchor score, same as before.
+    section_score = {}
     for sec in module["sections"]:
         qs = sec["questions"]
         anchors = [q for q in qs if q.get("_role", "Independent Question") != "Follow-up Question"]
         best = min((q["_score"] for q in anchors), default=min((q["_score"] for q in qs), default=0))
-        section_scores.append((sign * best, sec))
-    section_scores.sort(key=lambda t: t[0])
-    section_order = [sec["id"] for _score, sec in section_scores]
+        section_score[sec["id"]] = sign * best
+
+    # Cross-section dependency edges: if question in dependent's section
+    # cites a parent id living in a DIFFERENT section, the whole dependent
+    # section has to be delivered after that parent section -- otherwise
+    # the dependent question's showIf evaluates against an unanswered
+    # parent (permanently hidden, since the cursor never revisits earlier
+    # positions) the moment the two sections land on opposite sides of the
+    # pure-score sort below. The within-section union-find further down
+    # already keeps same-section mother/follow-up pairs adjacent; this is
+    # the section-level analogue for cross-section pairs (e.g. Utilization
+    # Q40's showIf cites Q7/Q12, which live in different sections than Q40
+    # itself; Q27-Q30's showIf cites Q22/Q23/Q26, in a different section
+    # again). A pure per-section score sort has no way to know about these
+    # -- it can and did put the dependent section first purely because its
+    # own anchor score happened to sort that way under one direction.
+    id_to_section = {q["id"]: sec["id"] for sec in module["sections"] for q in sec["questions"]}
+    deps = {sec["id"]: set() for sec in module["sections"]}
+    for sec in module["sections"]:
+        for q in sec["questions"]:
+            parent_ids = list(q.get("_parent_ids", []) or [])
+            implicit_pid = q.get("_implicit_after")
+            if implicit_pid:
+                parent_ids.append(implicit_pid)
+            for pid in parent_ids:
+                parent_sec = id_to_section.get(pid)
+                if parent_sec and parent_sec != sec["id"]:
+                    deps[sec["id"]].add(parent_sec)
+
+    # Stable topological sort: repeatedly pick the best-scoring section
+    # among those whose dependency sections are already placed. Degrades
+    # to the original pure score sort whenever there are no cross-section
+    # dependencies (deps all empty), so this is a strict generalization,
+    # not a behavior change for modules that don't need it.
+    remaining = {sec["id"] for sec in module["sections"]}
+    placed = []
+    placed_set = set()
+    while remaining:
+        ready = [sid for sid in remaining if deps[sid] <= placed_set]
+        if not ready:
+            # A dependency cycle shouldn't happen in practice (it would mean
+            # two sections each need a question from the other answered
+            # first) -- fall back to plain score order for whatever's left
+            # rather than looping forever.
+            ready = list(remaining)
+        ready.sort(key=lambda sid: section_score[sid])
+        chosen = ready[0]
+        placed.append(chosen)
+        placed_set.add(chosen)
+        remaining.discard(chosen)
+    id_to_sec_obj = {sec["id"]: sec for sec in module["sections"]}
+    section_order = placed
 
     question_order = {}
-    for _score, sec in section_scores:
+    for sec_id in section_order:
+        sec = id_to_sec_obj[sec_id]
         qs = sec["questions"]
         id_to_q = {q["id"]: q for q in qs}
 
