@@ -528,10 +528,10 @@
   // option labels. Answer is stored as an object keyed by item id. input
   // name/value attributes are unchanged, so the existing event-binding
   // code in renderQuestion() below needs no changes.
-  function renderMatrix(q) {
+  function renderMatrix(q, items) {
     const current = state.answers[q.id] && typeof state.answers[q.id] === "object" ? state.answers[q.id] : {};
     const headerCells = q.options.map((opt) => `<th class="matrix-col-label">${opt.label}</th>`).join("");
-    const rows = q.items
+    const rows = (items || q.items)
       .map((item) => {
         const cells = q.options
           .map(
@@ -577,6 +577,37 @@
     }
   }
 
+  // How many matrix rows actually fit is content-dependent (row-label
+  // length, number of scale columns, viewport size) -- rather than guess
+  // a fixed row count, this measures the fully-rendered matrix (every
+  // row) and only asks for a split if fitCardToViewport() would have to
+  // scale it down aggressively to avoid a scrollbar. A ~6-row PSQI-style
+  // grid keeps rendering as one page exactly as before; a 20-statement
+  // Ojala 2012 Coping Responses grid gets split into as many same-sized
+  // pages as it takes for each page to fit at (near) full scale.
+  // Returns a row-per-page count, or null if no split is needed.
+  function paginateMatrixIfNeeded() {
+    const card = document.querySelector(".question-card");
+    const container = document.querySelector(".container");
+    const table = document.querySelector(".matrix-table");
+    const tbody = table && table.querySelector("tbody");
+    if (!card || !container || !tbody) return null;
+    if (card.scrollHeight <= container.clientHeight) return null; // fits already
+
+    const rowEls = Array.from(tbody.children);
+    if (rowEls.length <= 1) return null; // nothing left to split
+
+    const rowHeight = tbody.scrollHeight / rowEls.length;
+    // Everything in the card that isn't table rows: stem, question-meta,
+    // table header, Next button, card padding. Assumed constant across
+    // pages of the same question (reasonable -- only the row count changes).
+    const overhead = card.scrollHeight - tbody.scrollHeight;
+    const budget = container.clientHeight * 0.95; // small safety margin
+    const rowsPerPage = Math.max(1, Math.floor((budget - overhead) / rowHeight));
+
+    return rowsPerPage < rowEls.length ? rowsPerPage : null;
+  }
+
   // Called on every answer change, including a participant revising an
   // earlier selection (e.g. picking a different matrix row, or unchecking
   // one multi-select box and checking another). Updates the last-changed
@@ -607,102 +638,158 @@
       finishStudy("completed");
       return;
     }
-        state.questionPresentedAt = StudyAPI.nowIso();
+    state.questionPresentedAt = StudyAPI.nowIso();
     const groupBadge = q.group ? `<span class="group-badge">Follow-up</span>` : "";
 
-    let optionsMarkup;
-    if (q.type === "ordinal") optionsMarkup = renderOrdinalScale(q);
-    else if (q.type === "multi") optionsMarkup = renderMultiList(q);
-    else if (q.type === "numeric") optionsMarkup = renderNumericInput(q);
-    else if (q.type === "text") optionsMarkup = renderTextInput(q);
-    else if (q.type === "dropdown") optionsMarkup = renderDropdown(q);
-    else if (q.type === "matrix") optionsMarkup = renderMatrix(q);
-    else optionsMarkup = renderChoiceList(q); // binary / nominal / categorical
+    // Matrix questions that don't fit on one screen even after
+    // fitCardToViewport()'s scale-down (e.g. a 20-statement Ojala 2012
+    // Coping Responses grid) get split into row-chunks the participant
+    // pages through via "Next" before the underlying study question
+    // actually advances. matrixPage stays null (i.e. "show every row")
+    // until paginateMatrixIfNeeded() says otherwise; it's a local to
+    // this call, so a genuinely new question always starts unpaginated.
+    let matrixPage = null; // { start, size, index, totalPages }
 
-    root.innerHTML = `
-      <div class="card question-card">
-        <p class="question-meta">${ctx.section.title} ${groupBadge}</p>
-        <p class="question-stem">${q.stem}</p>
-        ${optionsMarkup}
-        <div class="btn-row">
-          <button class="btn btn-primary" id="btn-next" disabled>Next</button>
+    function currentMatrixItems() {
+      if (q.type !== "matrix") return null;
+      if (!matrixPage) return q.items;
+      return q.items.slice(matrixPage.start, matrixPage.start + matrixPage.size);
+    }
+
+    function renderCard() {
+      let optionsMarkup;
+      if (q.type === "ordinal") optionsMarkup = renderOrdinalScale(q);
+      else if (q.type === "multi") optionsMarkup = renderMultiList(q);
+      else if (q.type === "numeric") optionsMarkup = renderNumericInput(q);
+      else if (q.type === "text") optionsMarkup = renderTextInput(q);
+      else if (q.type === "dropdown") optionsMarkup = renderDropdown(q);
+      else if (q.type === "matrix") optionsMarkup = renderMatrix(q, currentMatrixItems());
+      else optionsMarkup = renderChoiceList(q); // binary / nominal / categorical
+
+      const pageBadge =
+        matrixPage && matrixPage.totalPages > 1
+          ? `<span class="group-badge">Part ${matrixPage.index + 1} of ${matrixPage.totalPages}</span>`
+          : "";
+
+      root.innerHTML = `
+        <div class="card question-card">
+          <p class="question-meta">${ctx.section.title} ${groupBadge}${pageBadge}</p>
+          <p class="question-stem">${q.stem}</p>
+          ${optionsMarkup}
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-next" disabled>Next</button>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
 
-    requestAnimationFrame(() => fitCardToViewport(".question-card"));
+    function bindInputs() {
+      const nextBtn = document.getElementById("btn-next");
 
-    const nextBtn = document.getElementById("btn-next");
-
-    if (q.type === "multi") {
-      // Options flagged `exclusive: true` in the schema (e.g. "No, never
-      // been diagnosed...", "Don't know", "None of the above") can't
-      // coexist with any other selection in this question: checking one
-      // clears every other checkbox, and checking anything else clears
-      // any exclusive option that was previously checked.
-      const exclusiveValues = new Set(q.options.filter((opt) => opt.exclusive).map((opt) => opt.value));
-      document.querySelectorAll('input[name="answer"]').forEach((input) => {
-        input.addEventListener("change", (e) => {
-          const allInputs = document.querySelectorAll('input[name="answer"]');
-          if (e.target.checked) {
-            if (exclusiveValues.has(e.target.value)) {
-              allInputs.forEach((other) => {
-                if (other !== e.target) other.checked = false;
-              });
-            } else {
-              allInputs.forEach((other) => {
-                if (exclusiveValues.has(other.value)) other.checked = false;
-              });
-            }
-          }
-          const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((i) => i.value);
-          state.answers[q.id] = checked;
-          recordAnswerChange(q, ctx, checked);
-          nextBtn.disabled = checked.length === 0;
-        });
-      });
-    } else if (q.type === "numeric" || q.type === "text") {
-      const input = document.getElementById("text-answer");
-      input.addEventListener("input", () => {
-        state.answers[q.id] = input.value;
-        recordAnswerChange(q, ctx, input.value, { logIt: false });
-        nextBtn.disabled = input.value.trim() === "";
-      });
-    } else if (q.type === "dropdown") {
-      const input = document.getElementById("text-answer");
-      input.addEventListener("change", () => {
-        state.answers[q.id] = input.value;
-        recordAnswerChange(q, ctx, input.value);
-        nextBtn.disabled = input.value === "";
-      });
-    } else if (q.type === "matrix") {
-      const answerObj = {};
-      const checkComplete = () => {
-        nextBtn.disabled = q.items.some((item) => answerObj[item.id] === undefined);
-      };
-      q.items.forEach((item) => {
-        document.querySelectorAll(`input[name="matrix-${item.id}"]`).forEach((input) => {
+      if (q.type === "multi") {
+        // Options flagged `exclusive: true` in the schema (e.g. "No,
+        // never been diagnosed...", "Don't know", "None of the above")
+        // can't coexist with any other selection in this question:
+        // checking one clears every other checkbox, and checking
+        // anything else clears any exclusive option that was previously
+        // checked.
+        const exclusiveValues = new Set(q.options.filter((opt) => opt.exclusive).map((opt) => opt.value));
+        document.querySelectorAll('input[name="answer"]').forEach((input) => {
           input.addEventListener("change", (e) => {
-            answerObj[item.id] = e.target.value;
-            state.answers[q.id] = answerObj;
-            recordAnswerChange(q, ctx, answerObj);
-            checkComplete();
+            const allInputs = document.querySelectorAll('input[name="answer"]');
+            if (e.target.checked) {
+              if (exclusiveValues.has(e.target.value)) {
+                allInputs.forEach((other) => {
+                  if (other !== e.target) other.checked = false;
+                });
+              } else {
+                allInputs.forEach((other) => {
+                  if (exclusiveValues.has(other.value)) other.checked = false;
+                });
+              }
+            }
+            const checked = Array.from(document.querySelectorAll('input[name="answer"]:checked')).map((i) => i.value);
+            state.answers[q.id] = checked;
+            recordAnswerChange(q, ctx, checked);
+            nextBtn.disabled = checked.length === 0;
           });
         });
-      });
-    } else {
-      document.querySelectorAll('input[name="answer"]').forEach((input) => {
-        input.addEventListener("change", (e) => {
-          state.answers[q.id] = e.target.value;
-          recordAnswerChange(q, ctx, e.target.value);
-          nextBtn.disabled = false;
+      } else if (q.type === "numeric" || q.type === "text") {
+        const input = document.getElementById("text-answer");
+        input.addEventListener("input", () => {
+          state.answers[q.id] = input.value;
+          recordAnswerChange(q, ctx, input.value, { logIt: false });
+          nextBtn.disabled = input.value.trim() === "";
         });
+      } else if (q.type === "dropdown") {
+        const input = document.getElementById("text-answer");
+        input.addEventListener("change", () => {
+          state.answers[q.id] = input.value;
+          recordAnswerChange(q, ctx, input.value);
+          nextBtn.disabled = input.value === "";
+        });
+      } else if (q.type === "matrix") {
+        const items = currentMatrixItems();
+        // Seed from whatever's already been recorded for this question
+        // (earlier matrix pages included) rather than starting blank --
+        // starting blank meant the first change on a later page used to
+        // overwrite state.answers[q.id] with just that one row, silently
+        // dropping every row answered on an earlier page.
+        const existing = state.answers[q.id] && typeof state.answers[q.id] === "object" ? state.answers[q.id] : {};
+        const answerObj = { ...existing };
+        const checkComplete = () => {
+          nextBtn.disabled = items.some((item) => answerObj[item.id] === undefined);
+        };
+        items.forEach((item) => {
+          document.querySelectorAll(`input[name="matrix-${item.id}"]`).forEach((input) => {
+            input.addEventListener("change", (e) => {
+              answerObj[item.id] = e.target.value;
+              state.answers[q.id] = answerObj;
+              recordAnswerChange(q, ctx, answerObj);
+              checkComplete();
+            });
+          });
+        });
+        checkComplete(); // covers re-entering a page whose rows are all already answered
+      } else {
+        document.querySelectorAll('input[name="answer"]').forEach((input) => {
+          input.addEventListener("change", (e) => {
+            state.answers[q.id] = e.target.value;
+            recordAnswerChange(q, ctx, e.target.value);
+            nextBtn.disabled = false;
+          });
+        });
+      }
+
+      nextBtn.addEventListener("click", () => {
+        if (nextBtn.disabled) return; // guard: no answer selected, can't advance
+        if (matrixPage && matrixPage.index < matrixPage.totalPages - 1) {
+          // More row-chunks left in this same question -- advance the
+          // page and re-render, but don't touch the engine cursor or go
+          // to the effort-rating screen yet; that only happens once the
+          // last chunk's rows are answered too.
+          matrixPage = { ...matrixPage, index: matrixPage.index + 1, start: matrixPage.start + matrixPage.size };
+          renderCard();
+          bindInputs();
+          requestAnimationFrame(() => fitCardToViewport(".question-card"));
+          return;
+        }
+        goTo("rating");
       });
     }
 
-    nextBtn.addEventListener("click", () => {
-      if (nextBtn.disabled) return; // guard: no answer selected, can't advance
-      goTo("rating");
+    renderCard();
+
+    requestAnimationFrame(() => {
+      if (q.type === "matrix" && !matrixPage) {
+        const rowsPerPage = paginateMatrixIfNeeded();
+        if (rowsPerPage) {
+          matrixPage = { start: 0, size: rowsPerPage, index: 0, totalPages: Math.ceil(q.items.length / rowsPerPage) };
+          renderCard();
+        }
+      }
+      bindInputs();
+      fitCardToViewport(".question-card");
     });
   }
 

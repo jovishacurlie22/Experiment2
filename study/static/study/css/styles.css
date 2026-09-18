@@ -521,6 +521,19 @@ h1.study-title {
 .modal-card {
   max-width: 420px;
   width: 100%;
+  /* --surface is declared in :root but was never actually applied to any
+     card -- every .card in the app floats directly on the page gradient
+     with no fill of its own, which is invisible/fine when there's
+     nothing else underneath it (the ordinary per-question screens), but
+     this modal sits on top of the *live question card* behind a
+     45%-opacity backdrop, so with no fill of its own the still-legible
+     text of whatever question was open bleeds straight through its own
+     text. Same treatment as .fullscreen-gate-card, the other overlay
+     card in this file. */
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
 .modal-actions {
@@ -813,7 +826,17 @@ h1.study-title {
 
 .matrix-corner,
 .matrix-row-label {
-  width: 280px;   /* was 320px — most row labels here are short phrases */
+  /* Was a flat 280px, which doesn't scale with the (up to 1700px) card
+     width above, so widening the card only ever helped the data columns.
+     For matrices whose row labels are full question-stem sentences (e.g.
+     the PSQI-style "Sleep Quality" grid, or Ojala 2012 Coping Responses)
+     280px forces 4-6 lines of wrap per row, which inflates row height
+     enough that fitCardToViewport() has to scale the whole card down
+     (uniformly, including its width) to avoid a scrollbar -- which is
+     what makes a wide-enough card visually look cramped/narrow. A
+     percentage grows with the card, giving long labels more single-line
+     room automatically as the card widens. */
+  width: 26%;
 }
 
 .matrix-table thead th:not(.matrix-corner),
