@@ -11,7 +11,6 @@ window.STUDY_CONFIG_ASC = {
     "mecamh-climate-anxiety",
     "hms-overall-health",
     "hms-financial-stress",
-    "hms-sheet1",
     "hms-academic-persistence-retention-and-competition",
     "hms-mental-health-status",
     "hms-mental-health-service-utilization",
@@ -41,17 +40,11 @@ window.STUDY_CONFIG_ASC = {
       "hms-overall-health-chronic-disease",
     ],
     "hms-financial-stress": [
+      "hms-financial-stress-spending",
       "hms-financial-stress-housing-concerns",
       "hms-financial-stress-socioeconomic-status",
       "hms-financial-stress-scholarship-status",
       "hms-financial-stress-financing-education",
-    ],
-    "hms-sheet1": [
-      "hms-sheet1-spending",
-      "hms-sheet1-housing-concerns",
-      "hms-sheet1-socioeconomic-status",
-      "hms-sheet1-scholarship-status",
-      "hms-sheet1-financing-education",
     ],
     "hms-academic-persistence-retention-and-competition": [
       "hms-academic-persistence-retention-and-competition-overall-academic-experience",
@@ -118,6 +111,11 @@ window.STUDY_CONFIG_ASC = {
       "hms-overall-health-q5",
       "hms-overall-health-q3",
     ],
+    "hms-financial-stress-spending": [
+      "hms-financial-stress-q11",
+      "hms-financial-stress-q12",
+      "hms-financial-stress-q13",
+    ],
     "hms-financial-stress-housing-concerns": [
       "hms-financial-stress-q6",
       "hms-financial-stress-q7",
@@ -129,23 +127,6 @@ window.STUDY_CONFIG_ASC = {
       "hms-financial-stress-q4",
       "hms-financial-stress-q3",
       "hms-financial-stress-q5",
-    ],
-    "hms-sheet1-spending": [
-      "hms-sheet1-q11",
-      "hms-sheet1-q12",
-      "hms-sheet1-q13",
-    ],
-    "hms-sheet1-housing-concerns": [
-      "hms-sheet1-q6",
-      "hms-sheet1-q7",
-      "hms-sheet1-q8",
-    ],
-    "hms-sheet1-socioeconomic-status": [
-      "hms-sheet1-q2",
-      "hms-sheet1-q1",
-      "hms-sheet1-q4",
-      "hms-sheet1-q3",
-      "hms-sheet1-q5",
     ],
     "hms-academic-persistence-retention-and-competition-overall-academic-experience": [
       "hms-academic-persistence-retention-and-competition-q8",
@@ -277,7 +258,6 @@ window.STUDY_CONFIG_DESC = {
     "hms-mental-health-service-utilization",
     "hms-mental-health-status",
     "hms-academic-persistence-retention-and-competition",
-    "hms-sheet1",
     "hms-financial-stress",
     "hms-overall-health",
     "mecamh-climate-anxiety",
@@ -335,18 +315,12 @@ window.STUDY_CONFIG_DESC = {
       "hms-academic-persistence-retention-and-competition-faculty-advising-ph-d-students",
       "hms-academic-persistence-retention-and-competition-overall-academic-experience",
     ],
-    "hms-sheet1": [
-      "hms-sheet1-financing-education",
-      "hms-sheet1-scholarship-status",
-      "hms-sheet1-socioeconomic-status",
-      "hms-sheet1-housing-concerns",
-      "hms-sheet1-spending",
-    ],
     "hms-financial-stress": [
       "hms-financial-stress-financing-education",
       "hms-financial-stress-scholarship-status",
       "hms-financial-stress-socioeconomic-status",
       "hms-financial-stress-housing-concerns",
+      "hms-financial-stress-spending",
     ],
     "hms-overall-health": [
       "hms-overall-health-chronic-disease",
@@ -398,22 +372,10 @@ window.STUDY_CONFIG_DESC = {
       "hms-financial-stress-q6",
       "hms-financial-stress-q7",
     ],
-    "hms-sheet1-socioeconomic-status": [
-      "hms-sheet1-q5",
-      "hms-sheet1-q3",
-      "hms-sheet1-q4",
-      "hms-sheet1-q1",
-      "hms-sheet1-q2",
-    ],
-    "hms-sheet1-housing-concerns": [
-      "hms-sheet1-q8",
-      "hms-sheet1-q6",
-      "hms-sheet1-q7",
-    ],
-    "hms-sheet1-spending": [
-      "hms-sheet1-q11",
-      "hms-sheet1-q12",
-      "hms-sheet1-q13",
+    "hms-financial-stress-spending": [
+      "hms-financial-stress-q11",
+      "hms-financial-stress-q12",
+      "hms-financial-stress-q13",
     ],
     "hms-academic-persistence-retention-and-competition-perceived-competition": [
       "hms-academic-persistence-retention-and-competition-q2",
