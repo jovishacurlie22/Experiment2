@@ -380,8 +380,8 @@ PIPE_IN_TEMPLATE_RE = re.compile(
 PIPE_IN_BRACKET_RE = re.compile(r"\[\s*pipe\s+in[^\]]*\]", re.IGNORECASE)
 
 
-def strip_pipe_in_bracket(text):
-    return PIPE_IN_BRACKET_RE.sub("each place you selected", text)
+def strip_pipe_in_bracket(text, replacement="each place you selected"):
+    return PIPE_IN_BRACKET_RE.sub(replacement, text)
 
 
 # A THIRD pipe-in shape: a filtered pipe-in, embedded as a bracket in the
@@ -642,6 +642,15 @@ def build_hms_content():
                     if pipe_qid:
                         question["pipeInFrom"] = pipe_qid
                         question["pipeInTemplate"] = [{"id": f"{qid}-t{i}", "label": item} for i, item in enumerate(items)]
+                        # Same split, but with the bracket replaced by a
+                        # substitution placeholder instead of generic text --
+                        # this is what app.js actually displays per-screen
+                        # (one screen per selected place), substituting each
+                        # place's own label in for "{option}". `stem` above
+                        # (the generic version) is kept only as a fallback for
+                        # a schema that predates this field.
+                        stem_template, _ = split_matrix_stem_and_items(strip_pipe_in_bracket(question_text, "{option}"))
+                        question["pipeInStemTemplate"] = stem_template
                         review_notes.append((qid, "matrix_split", f"{len(items)} template item(s) parsed, piped from {pipe_qid}" + ("" if stem else " — EMPTY STEM, needs manual review")))
                     else:
                         review_notes.append((qid, "needs_review", "pipe-in source question not resolved from Notes -- fell back to static matrix items"))
@@ -1141,6 +1150,8 @@ def emit_question(q, review_by_qid, indent="        "):
         if q.get("pipeInTemplate"):
             lines.append(f'{indent}  pipeInItems: {{')
             lines.append(f'{indent}    fromQuestionId: {js_string(q["pipeInFrom"])},')
+            if q.get("pipeInStemTemplate"):
+                lines.append(f'{indent}    stemTemplate: {js_string(q["pipeInStemTemplate"])},')
             lines.append(f'{indent}    template: [')
             for item in q["pipeInTemplate"]:
                 lines.append(f'{indent}      {{ id: {js_string(item["id"])}, label: {js_string(item["label"])} }},')

@@ -1508,6 +1508,7 @@ window.STUDY_MODULES = [
           stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at each place you selected?",
           pipeInItems: {
             fromQuestionId: "hms-mental-health-service-utilization-q25",
+            stemTemplate: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at {option}?",
             template: [
               { id: "hms-mental-health-service-utilization-q28-t0", label: "Convenient hours" },
               { id: "hms-mental-health-service-utilization-q28-t1", label: "Location [Do not display for digital resources]" },

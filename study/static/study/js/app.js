@@ -62,17 +62,15 @@
   // question (survey-tool "carry forward choices" pattern; CCMH source
   // Notes describe these as "[pipe in selected options from: ...]").
   //
-  // q.pipeInItems: { fromQuestionId, template? }
+  // q.pipeInItems: { fromQuestionId, template?, filter? }
   //   - no `template`: one row per selected option of fromQuestionId,
   //     labeled with that option's own label (e.g. q26 rows = the places
   //     the participant said they got counseling from).
   //   - `template` present: cross-product of the selected options with a
   //     fixed list of sub-items, one row per (selected option x template
-  //     item), labeled "<template label> — <option label>" (e.g. q28: the
-  //     6 satisfaction aspects repeated once per place selected).
-  // Falls back to q.items (or []) for ordinary, non-piped matrix questions.
-  function resolvePipeInItems(q) {
-    if (!q.pipeInItems) return q.items || [];
+  //     item) -- see resolvePipeInGroups below for the one-screen-per-
+  //     option alternative to flattening these into a single big matrix.
+  function resolveSelectedPipeInOptions(q) {
     const source = QUESTIONS_BY_ID.get(q.pipeInItems.fromQuestionId);
     const rawAnswer = state.answers[q.pipeInItems.fromQuestionId];
     const selectedValues = Array.isArray(rawAnswer) ? rawAnswer : rawAnswer != null ? [rawAnswer] : [];
@@ -94,6 +92,17 @@
         return allowedValues.includes(rowValue);
       });
     }
+    return selectedOptions;
+  }
+
+  // Falls back to q.items (or []) for ordinary, non-piped matrix questions.
+  // For a template pipe-in, this is the flattened "one big matrix" shape
+  // (rows labeled "<aspect> — <place>") -- see resolvePipeInGroups for the
+  // one-screen-per-place alternative, which is what renderQuestion() below
+  // actually uses for template pipe-ins now.
+  function resolvePipeInItems(q) {
+    if (!q.pipeInItems) return q.items || [];
+    const selectedOptions = resolveSelectedPipeInOptions(q);
 
     if (!q.pipeInItems.template) {
       return selectedOptions.map((opt) => ({ id: `${q.id}-pipe-${opt.value}`, label: opt.label }));
@@ -105,6 +114,26 @@
       });
     });
     return rows;
+  }
+
+  // One screen per selected pipe-in option, for a template pipe-in matrix
+  // (q28-style: 6 aspects, once per place selected) -- e.g. a participant
+  // who picked 3 places gets 3 short screens (just the 6 aspects each),
+  // instead of one 18-row wall with the place name repeated in every row
+  // label. The place name goes in the question stem instead (see
+  // q.pipeInItems.stemTemplate, substituted in renderQuestion() below).
+  // Returns null for anything that isn't a template pipe-in (an ordinary
+  // matrix, or a simple pipe-in like q26 where rows already ARE the
+  // places) -- callers use that null to fall back to the normal
+  // resolvePipeInItems() + row-count pagination path.
+  function resolvePipeInGroups(q) {
+    if (!q.pipeInItems || !q.pipeInItems.template) return null;
+    const selectedOptions = resolveSelectedPipeInOptions(q);
+    return selectedOptions.map((opt) => ({
+      value: opt.value,
+      label: opt.label,
+      rows: q.pipeInItems.template.map((tmpl) => ({ id: `${q.id}-pipe-${opt.value}-${tmpl.id}`, label: tmpl.label })),
+    }));
   }
 
   // Odd participant IDs -> ascending cognitive-load order.
@@ -711,13 +740,45 @@
     // actually advances. matrixPage stays null (i.e. "show every row")
     // until paginateMatrixIfNeeded() says otherwise; it's a local to
     // this call, so a genuinely new question always starts unpaginated.
-    let matrixPage = null; // { start, size, index, totalPages }
+    //
+    // A template pipe-in matrix (q28-style) is a special case of this: it
+    // ALWAYS splits, one screen per selected place regardless of whether
+    // it'd fit on one screen, since flattening it into one big matrix is
+    // the exact "messy, place name repeated in every row" layout this is
+    // meant to avoid. pipeInGroups is null for anything else (an ordinary
+    // matrix, or a simple pipe-in like q26), in which case matrixPage
+    // falls through to the normal viewport-driven pagination below.
+    const pipeInGroups = q.type === "matrix" ? resolvePipeInGroups(q) : null;
+    let matrixPage = pipeInGroups && pipeInGroups.length > 0
+      ? { index: 0, totalPages: pipeInGroups.length } // { start, size } unused/irrelevant in this mode
+      : null; // { start, size, index, totalPages }
 
     function currentMatrixItems() {
       if (q.type !== "matrix") return null;
+      if (pipeInGroups) {
+        const group = pipeInGroups[matrixPage ? matrixPage.index : 0];
+        return group ? group.rows : [];
+      }
       const allItems = resolvePipeInItems(q);
       if (!matrixPage) return allItems;
       return allItems.slice(matrixPage.start, matrixPage.start + matrixPage.size);
+    }
+
+    // The stem to actually display -- for a template pipe-in, substitutes
+    // the current screen's place name into q.pipeInItems.stemTemplate's
+    // "{option}" placeholder ("...aspects of your therapy at {option}?"
+    // -> "...at YourDost?"). Falls back to appending the place name after
+    // q.stem if an older-generated schema doesn't have stemTemplate yet.
+    function currentStem() {
+      if (pipeInGroups) {
+        const group = pipeInGroups[matrixPage ? matrixPage.index : 0];
+        if (group) {
+          return q.pipeInItems.stemTemplate
+            ? q.pipeInItems.stemTemplate.replace("{option}", group.label)
+            : `${q.stem} — ${group.label}`;
+        }
+      }
+      return q.stem;
     }
 
     function renderCard() {
@@ -738,7 +799,7 @@
       root.innerHTML = `
         <div class="card question-card">
           <p class="question-meta">${ctx.section.title} ${groupBadge}${pageBadge}</p>
-          <p class="question-stem">${q.stem}</p>
+          <p class="question-stem">${currentStem()}</p>
           ${optionsMarkup}
           <div class="btn-row">
             <button class="btn btn-primary" id="btn-next" disabled>Next</button>
