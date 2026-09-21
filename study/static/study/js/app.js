@@ -594,7 +594,7 @@
   function renderMatrix(q, items) {
     const current = state.answers[q.id] && typeof state.answers[q.id] === "object" ? state.answers[q.id] : {};
     const headerCells = q.options.map((opt) => `<th class="matrix-col-label">${opt.label}</th>`).join("");
-    const rows = (items || q.items)
+    const rows = (items || [])
       .map((item) => {
         const cells = q.options
           .map(
@@ -715,8 +715,9 @@
 
     function currentMatrixItems() {
       if (q.type !== "matrix") return null;
-      if (!matrixPage) return q.items;
-      return q.items.slice(matrixPage.start, matrixPage.start + matrixPage.size);
+      const allItems = resolvePipeInItems(q);
+      if (!matrixPage) return allItems;
+      return allItems.slice(matrixPage.start, matrixPage.start + matrixPage.size);
     }
 
     function renderCard() {
@@ -847,7 +848,7 @@
       if (q.type === "matrix" && !matrixPage) {
         const rowsPerPage = paginateMatrixIfNeeded();
         if (rowsPerPage) {
-          matrixPage = { start: 0, size: rowsPerPage, index: 0, totalPages: Math.ceil(q.items.length / rowsPerPage) };
+          matrixPage = { start: 0, size: rowsPerPage, index: 0, totalPages: Math.ceil(resolvePipeInItems(q).length / rowsPerPage) };
           renderCard();
         }
       }
