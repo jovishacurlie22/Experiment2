@@ -1,11 +1,13 @@
 import json
+import shutil
 import tempfile
+import threading
+import uuid
 from pathlib import Path
 import os
-import tempfile
-from pathlib import Path
 
 from django.conf import settings
+from django.db import connection
 
 import logging
 
@@ -298,25 +300,235 @@ def finish_session(request):
         epoch_ms=resolved_epoch_ms(payload, client_dt),
     )
     finalize_all_recordings(session)
-    finalize_all_recordings(session)
 
     return JsonResponse({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Chunked recording upload helpers
+# ---------------------------------------------------------------------------
+
+# Keep the assembled raw H.264 stream (<stream>.raw.h264) next to the mp4.
+# The mp4 is CFR-locked; the raw stream + <stream>.sidecar.jsonl (per-frame
+# timestamps) are the untouched originals for time synchronisation.
+KEEP_RAW_STREAMS = True
+
+# Only one ffmpeg mux at a time per Gunicorn worker process, so a webcam and a
+# screen finalize that land together don't fight over the VM's CPU.
+_MUX_LOCK = threading.Lock()
+
+
+def _session_dir(session):
+    return os.path.join(
+        settings.MEDIA_ROOT, "recordings",
+        session.participant.participant_code, str(session.session_key),
+    )
+
+
+def _write_atomic(path, pieces, mode="wb"):
+    """Write to a unique temp file, then os.replace() it into place. A retried
+    or duplicated request therefore just overwrites the same chunk file with
+    identical bytes -- it can never append twice or leave a half-written file."""
+    tmp = f"{path}.{uuid.uuid4().hex}.tmp"
+    with open(tmp, mode) as f:
+        for piece in pieces:
+            f.write(piece)
+    os.replace(tmp, path)
+
+
+def _chunk_indices(chunk_dir):
+    """Sorted chunk indices that have a raw file on disk."""
+    indices = set()
+    if not os.path.isdir(chunk_dir):
+        return []
+    for name in os.listdir(chunk_dir):
+        stem, ext = os.path.splitext(name)
+        if ext == ".h264" and stem.isdigit():
+            indices.add(int(stem))
+    return sorted(indices)
+
+
+def _read_json(path):
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _assemble_stream(chunk_dir, last_index, raw_out_path, sidecar_out_path):
+    """Concatenate chunks 0..last_index (in index order) into raw_out_path and
+    write every chunk's sidecar frames, in order, to sidecar_out_path (JSONL).
+    Returns (total_frames, first_ts_us, last_ts_us, missing, received_chunks)."""
+    total_frames = 0
+    first_ts_us = None
+    last_ts_us = None
+    missing = []
+    received = 0
+    sidecar_tmp = f"{sidecar_out_path}.{uuid.uuid4().hex}.tmp"
+    with open(raw_out_path, "wb") as out, open(sidecar_tmp, "w") as side_out:
+        for idx in range(last_index + 1):
+            raw_path = os.path.join(chunk_dir, f"{idx:06d}.h264")
+            side_path = os.path.join(chunk_dir, f"{idx:06d}.json")
+            if not os.path.exists(raw_path):
+                missing.append(idx)
+                continue
+            received += 1
+            with open(raw_path, "rb") as f:
+                shutil.copyfileobj(f, out, 1024 * 1024)
+            entry = _read_json(side_path)
+            frames = entry.get("frames", [])
+            total_frames += entry.get("frame_count", len(frames))
+            if frames:
+                if first_ts_us is None:
+                    first_ts_us = frames[0]["timestamp_us"]
+                last_ts_us = frames[-1]["timestamp_us"]
+            side_out.write(json.dumps({
+                "chunk_index": idx,
+                "frame_count": entry.get("frame_count", len(frames)),
+                "frames": frames,
+            }) + "\n")
+    os.replace(sidecar_tmp, sidecar_out_path)
+    return total_frames, first_ts_us, last_ts_us, missing, received
+
+
+def finalize_stream_from_chunks(session, stream_source):
+    """Assemble a stream from its chunk files, verify completeness, mux it with
+    ffmpeg and create the Recording row. Everything it needs is read from disk,
+    so it works both for the background thread and for the
+    `finalize_pending` management command. Raises on failure; the chunk files
+    are left in place so nothing is lost."""
+    session_dir = _session_dir(session)
+    partial_dir = os.path.join(session_dir, "_partial")
+    chunk_dir = os.path.join(partial_dir, stream_source)
+
+    indices = _chunk_indices(chunk_dir)
+    if not indices:
+        raise RuntimeError(f"no chunk files found in {chunk_dir}")
+    last_index = indices[-1]
+    meta = _read_json(os.path.join(chunk_dir, f"{last_index:06d}.json"))
+    saw_final = bool(meta.get("is_final"))
+
+    raw_partial_path = Path(partial_dir) / f"{stream_source}.h264"
+    sidecar_path = os.path.join(session_dir, f"{stream_source}.sidecar.jsonl")
+    total_frames, first_ts_us, last_ts_us, missing, received = _assemble_stream(
+        chunk_dir, last_index, raw_partial_path, sidecar_path
+    )
+
+    expected_chunks = meta.get("total_chunks")
+    expected_frames = meta.get("total_frames")
+    complete = (
+        saw_final
+        and not missing
+        and (expected_chunks is None or expected_chunks == received)
+        and (expected_frames is None or expected_frames == total_frames)
+    )
+    if not complete:
+        logger.error(
+            "INCOMPLETE recording %s/%s: final_seen=%s missing_chunks=%s "
+            "chunks=%s/%s frames=%s/%s",
+            session.session_key, stream_source, saw_final, missing,
+            received, expected_chunks, total_frames, expected_frames,
+        )
+
+    target_fps = meta.get("target_fps") or 30
+    if first_ts_us is not None and last_ts_us is not None and last_ts_us > first_ts_us:
+        duration_s = (last_ts_us - first_ts_us) / 1e6
+        avg_fps = total_frames / duration_s if duration_s > 0 else target_fps
+    else:
+        avg_fps = meta.get("avg_fps") or target_fps
+
+    # Proof of completeness, kept next to the video. Written BEFORE the mux so
+    # it exists even if ffmpeg fails.
+    manifest = {
+        "session_key": str(session.session_key),
+        "stream_source": stream_source,
+        "complete": complete,
+        "final_chunk_seen": saw_final,
+        "expected_chunks": expected_chunks,
+        "received_chunks": received,
+        "missing_chunks": missing,
+        "expected_frames": expected_frames,
+        "received_frames": total_frames,
+        "target_fps": target_fps,
+        "avg_fps": avg_fps,
+        "assembled_at": timezone.now().isoformat(),
+    }
+    _write_atomic(
+        os.path.join(session_dir, f"{stream_source}.manifest.json"),
+        [json.dumps(manifest, indent=2)], "w",
+    )
+
+    output_path = os.path.join(session_dir, f"{stream_source}.mp4")
+    with _MUX_LOCK:
+        mux_and_lock_cfr(raw_partial_path, avg_fps, target_fps, Path(output_path))
+
+    Recording.objects.update_or_create(
+        session=session,
+        stream_source=stream_source,
+        defaults={
+            "file": os.path.relpath(output_path, settings.MEDIA_ROOT),
+            "chunk_count": total_frames,
+            "finalized_at": timezone.now(),
+        },
+    )
+
+    # The mp4, sidecar and manifest are safely on disk -- tidy up.
+    try:
+        if KEEP_RAW_STREAMS:
+            os.replace(raw_partial_path, os.path.join(session_dir, f"{stream_source}.raw.h264"))
+        else:
+            raw_partial_path.unlink(missing_ok=True)
+        shutil.rmtree(chunk_dir, ignore_errors=True)
+    except OSError:
+        logger.exception("Cleanup after finalize failed for %s/%s", session.session_key, stream_source)
+
+    logger.info(
+        "Finalized %s/%s: %s frames, complete=%s",
+        session.session_key, stream_source, total_frames, complete,
+    )
+    return manifest
+
+
+def _finalize_stream(session_pk, stream_source, lock_path):
+    """Background-thread wrapper: runs AFTER the final chunk has been
+    acknowledged to the browser, so a slow ffmpeg mux can no longer block a
+    Gunicorn worker or trip nginx's upstream timeout."""
+    try:
+        session = StudySession.objects.select_related("participant").get(pk=session_pk)
+        finalize_stream_from_chunks(session, stream_source)
+    except Exception:
+        # Chunk files are deliberately left on disk so nothing is lost;
+        # `python manage.py finalize_pending` can re-run it.
+        logger.exception(
+            "Background finalize failed for session pk=%s stream=%s",
+            session_pk, stream_source,
+        )
+    finally:
+        try:
+            os.remove(lock_path)
+        except OSError:
+            pass
+        connection.close()  # this thread's own DB connection
 
 
 @require_POST
 def upload_recording(request):
     """
-    WebCodecs flow: the client now streams a raw AVC Annex-B elementary
-    stream in small pieces during recording (chunk_index=0,1,2... with
-    is_final=true on the last one) rather than uploading one huge file at
-    session end -- this avoids single-request size/timeout limits on long
-    sessions. Each chunk's raw bytes are appended to a per-session/
-    per-stream partial file on disk; each chunk's sidecar frames are
-    appended as one line to a partial JSONL file so we never have to hold
-    a full session's frame list in memory. Only on the final chunk do we
-    assemble stats and call mux_and_lock_cfr -- exactly as before, same
-    avg_fps/target_fps handling, same ffmpeg call. Nothing about the fps
-    locking changes; only *when* bytes arrive changes.
+    WebCodecs flow: the client streams a raw AVC Annex-B elementary stream in
+    small pieces during recording (chunk_index=0,1,2... with is_final=true on
+    the last one).
+
+    Each chunk is stored as its own file (_partial/<stream>/<index>.h264 plus
+    <index>.json for its sidecar), written atomically. That makes the endpoint
+    idempotent: a chunk the browser re-sends after a timeout simply overwrites
+    itself instead of being appended twice. The browser declares raw_bytes so
+    a truncated upload is rejected (409) and re-sent.
+
+    The final chunk only *claims* the stream (lock file) and starts a
+    background thread that assembles the chunks, verifies them against the
+    totals the browser sent, and runs the ffmpeg mux, then returns
+    immediately. The heavy work never runs inside the request.
     """
     session_key = request.POST.get("session_key")
     session, error = get_session_or_error({"session_key": session_key})
@@ -328,114 +540,98 @@ def upload_recording(request):
     if stream_source not in dict(RecordingChunk.STREAM_CHOICES):
         return JsonResponse({"error": "stream_source must be 'webcam' or 'screen'"}, status=400)
 
-    # If this stream was already finalized (e.g. a retried final chunk
-    # whose earlier response got lost in transit), don't reprocess --
-    # just acknowledge so the client stops retrying.
+    # Already finalized (e.g. a retried final chunk whose earlier response was
+    # lost): just acknowledge so the client stops retrying.
     already_done = Recording.objects.filter(
         session=session, stream_source=stream_source
     ).exclude(finalized_at=None).exists()
     if already_done:
         return JsonResponse({"ok": True, "already_finalized": True})
 
+    # Finalization already running for this stream (a retried final chunk):
+    # every chunk is already on disk, so just acknowledge and touch nothing.
+    session_partial_dir = os.path.join(_session_dir(session), "_partial")
+    if os.path.exists(os.path.join(session_partial_dir, f"{stream_source}.lock")):
+        return JsonResponse({"ok": True, "processing": True})
+
+    try:
+        chunk_index = int(request.POST.get("chunk_index", "0"))
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "chunk_index must be an integer"}, status=400)
+    if chunk_index < 0:
+        return JsonResponse({"error": "chunk_index must be >= 0"}, status=400)
+    is_final = request.POST.get("is_final") == "true"
+
     raw_file = request.FILES.get("video_raw")
-    if raw_file is None:
+    if raw_file is None and not is_final:
         return JsonResponse({"error": "video_raw file is required"}, status=400)
+
+    # Truncated-upload check: the browser tells us how many bytes it sent.
+    declared_raw = request.POST.get("raw_bytes")
+    if declared_raw not in (None, ""):
+        try:
+            declared_raw_int = int(declared_raw)
+        except (TypeError, ValueError):
+            return JsonResponse({"error": "raw_bytes must be an integer"}, status=400)
+        received_raw = raw_file.size if raw_file is not None else 0
+        if received_raw != declared_raw_int:
+            return JsonResponse(
+                {"error": "size mismatch", "declared": declared_raw_int, "received": received_raw},
+                status=409,
+            )
 
     try:
         sidecar = json.loads(request.POST.get("sidecar_json", "{}"))
     except json.JSONDecodeError:
         return JsonResponse({"error": "invalid sidecar_json"}, status=400)
 
-    try:
-        chunk_index = int(request.POST.get("chunk_index", "0"))
-    except (TypeError, ValueError):
-        return JsonResponse({"error": "chunk_index must be an integer"}, status=400)
-    is_final = request.POST.get("is_final") == "true"
-
-    session_dir = os.path.join(
-        settings.MEDIA_ROOT, "recordings",
-        session.participant.participant_code, str(session.session_key),
-    )
+    session_dir = _session_dir(session)
     partial_dir = os.path.join(session_dir, "_partial")
-    os.makedirs(partial_dir, exist_ok=True)
+    chunk_dir = os.path.join(partial_dir, stream_source)
+    os.makedirs(chunk_dir, exist_ok=True)
 
-    raw_partial_path = Path(partial_dir) / f"{stream_source}.h264"
-    sidecar_partial_path = Path(partial_dir) / f"{stream_source}.sidecar.jsonl"
-
-    # Annex-B NAL units concatenate cleanly in order, so appending across
-    # requests reconstructs exactly the same elementary stream a one-shot
-    # upload would have produced.
-    with open(raw_partial_path, "ab") as f:
-        for piece in raw_file.chunks():
-            f.write(piece)
-
-    # Kept for the future frame-accurate mux pipeline (per-frame
-    # timestamp_us/capture_perf_ms); today only frame_count/avg_fps below
-    # feed mux_and_lock_cfr.
-    with open(sidecar_partial_path, "a") as f:
-        f.write(json.dumps({
-            "chunk_index": chunk_index,
-            "frame_count": sidecar.get("frame_count", 0),
-            "frames": sidecar.get("frames", []),
-        }) + "\n")
+    # The final chunk is often 0 bytes (just the encoder tail + is_final flag).
+    # The raw file is written first and the sidecar second, both atomically,
+    # so a chunk is only acknowledged once both are safely on disk.
+    raw_pieces = raw_file.chunks() if raw_file is not None else []
+    _write_atomic(os.path.join(chunk_dir, f"{chunk_index:06d}.h264"), raw_pieces, "wb")
+    entry = dict(sidecar)
+    entry["chunk_index"] = chunk_index
+    entry["is_final"] = is_final
+    entry.setdefault("frames", [])
+    entry.setdefault("frame_count", len(entry["frames"]))
+    _write_atomic(
+        os.path.join(chunk_dir, f"{chunk_index:06d}.json"),
+        [json.dumps(entry)], "w",
+    )
 
     if not is_final:
         return JsonResponse({"ok": True, "chunk_index": chunk_index})
 
-    # Final chunk: assemble stats across every chunk line written so far,
-    # then run the same mux/CFR-lock step the one-shot flow always used.
-    total_frames = 0
-    first_ts_us = None
-    last_ts_us = None
-    with open(sidecar_partial_path, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            entry = json.loads(line)
-            frames = entry.get("frames", [])
-            total_frames += entry.get("frame_count", len(frames))
-            if frames:
-                if first_ts_us is None:
-                    first_ts_us = frames[0]["timestamp_us"]
-                last_ts_us = frames[-1]["timestamp_us"]
-
-    target_fps = sidecar.get("target_fps") or 30
-    if first_ts_us is not None and last_ts_us is not None and last_ts_us > first_ts_us:
-        duration_s = (last_ts_us - first_ts_us) / 1e6
-        avg_fps = total_frames / duration_s if duration_s > 0 else target_fps
-    else:
-        avg_fps = sidecar.get("avg_fps") or target_fps
-
-    output_path = os.path.join(session_dir, f"{stream_source}.mp4")
+    # Final chunk: claim the stream so a retried final can't start a second
+    # mux, then hand the heavy work to a background thread and return now.
+    lock_path = os.path.join(partial_dir, f"{stream_source}.lock")
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+    except FileExistsError:
+        return JsonResponse({"ok": True, "chunk_index": chunk_index, "processing": True})
 
     try:
-        mux_and_lock_cfr(raw_partial_path, avg_fps, target_fps, Path(output_path))
-    except Exception as e:
-        logger.error(
-            "ffmpeg mux/CFR-lock failed for %s/%s: %s",
-            session.session_key, stream_source, e,
-        )
-        return JsonResponse({"error": "video processing failed"}, status=500)
+        # Non-daemon: on a graceful Gunicorn restart the interpreter waits for
+        # a running mux instead of killing it mid-write.
+        threading.Thread(
+            target=_finalize_stream,
+            args=(session.pk, stream_source, lock_path),
+            daemon=False,
+        ).start()
+    except Exception:
+        os.remove(lock_path)
+        logger.exception("Could not start finalize thread for %s/%s", session.session_key, stream_source)
+        return JsonResponse({"error": "could not start video processing"}, status=500)
 
-    recording, _ = Recording.objects.update_or_create(
-        session=session,
-        stream_source=stream_source,
-        defaults={
-            "file": os.path.relpath(output_path, settings.MEDIA_ROOT),
-            "chunk_count": total_frames,
-            "finalized_at": timezone.now(),
-        },
-    )
+    return JsonResponse({"ok": True, "chunk_index": chunk_index, "processing": True})
 
-    # Clean up the partial files now that the mp4 is safely written.
-    try:
-        raw_partial_path.unlink(missing_ok=True)
-        sidecar_partial_path.unlink(missing_ok=True)
-    except OSError:
-        pass
-
-    return JsonResponse({"ok": True, "recording_id": recording.id})
 
 @csrf_exempt
 @require_POST

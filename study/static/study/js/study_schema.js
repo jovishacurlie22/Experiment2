@@ -1723,7 +1723,7 @@ window.STUDY_MODULES = [
         {
           id: "hms-mental-health-service-utilization-q43",
           type: "multi",
-          stem: "Which of the following are important reasons why you received those services? (Select all that apply)",
+          stem: "Which of the following are important reasons why you received the counselling services? (Select all that apply)",
           options: [
             { value: "1", label: "I decided on my own to seek help." },
             { value: "2", label: "A friend encouraged me to seek help." },
