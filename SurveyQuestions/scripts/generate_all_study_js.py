@@ -383,6 +383,55 @@ PIPE_IN_BRACKET_RE = re.compile(r"\[\s*pipe\s+in[^\]]*\]", re.IGNORECASE)
 def strip_pipe_in_bracket(text, replacement="each place you selected"):
     return PIPE_IN_BRACKET_RE.sub(replacement, text)
 
+# ---------------------------------------------------------------------------
+# Row-level "hide for digital resources" annotations. A few source rows
+# carry a bracketed instruction inside their own text -- e.g.
+# "Location [Do not display for digital resources]" (the per-place
+# satisfaction aspects). That bracket is an INSTRUCTION to the survey
+# builder, not participant-facing text, so it is stripped from the label and
+# turned into a machine-readable flag (hideForDigital: true) on the item.
+#
+# Whether a given place is "digital" is NOT a property of the place itself
+# (YourDost, a community provider etc. can each be in-person or remote) --
+# it's the participant's own answer to the earlier "how were your sessions
+# conducted" matrix (In-person only / Remote-telehealth only / Both). A
+# place counts as digital when that answer is the remote-only one; "Both"
+# still involves a physical location, so Location stays for it. The
+# question is found by DIGITAL_MODE_QUESTION_PHRASE and the remote-only
+# codes are read off its options, then emitted on the pipe-in as
+# hideForDigitalWhen: { matrixQuestionId, in: [...] } for app.js to check
+# per place at render time.
+# ---------------------------------------------------------------------------
+DIGITAL_HIDE_RE = re.compile(r"\s*\[\s*do\s+not\s+display\s+for\s+digital[^\]]*\]", re.IGNORECASE)
+DIGITAL_MODE_QUESTION_PHRASE = "how were your counseling or therapy sessions conducted"
+
+
+def remote_only_codes(options):
+    """Codes of options that mean remote/digital ONLY -- mentions remote,
+    telehealth or digital, but not in-person / both."""
+    codes = []
+    for opt in options:
+        label = opt["label"]
+        if re.search(r"remote|telehealth|digital|online", label, re.IGNORECASE) and not re.search(r"in[- ]person|both", label, re.IGNORECASE):
+            codes.append(opt["code"])
+    return codes
+
+
+def make_items(qid, items, tag):
+    """Build [{id, label, hideForDigital?}] from raw split row texts,
+    stripping any "[Do not display for digital resources]" annotation from
+    the participant-facing label. Ids stay index-based on the ORIGINAL row
+    position, so hiding a row never renumbers its neighbours."""
+    out = []
+    for i, raw in enumerate(items):
+        hide = bool(DIGITAL_HIDE_RE.search(raw))
+        item = {"id": f"{qid}-{tag}{i}", "label": DIGITAL_HIDE_RE.sub("", raw).strip()}
+        if hide:
+            item["hideForDigital"] = True
+        out.append(item)
+    return out
+
+
 
 # A THIRD pipe-in shape: a filtered pipe-in, embedded as a bracket in the
 # QUESTION text itself rather than the Notes column -- "[pipe in the
@@ -634,14 +683,24 @@ def build_hms_content():
                         review_notes.append((qid, "needs_review", "pipe-in source question not resolved from Notes -- fell back to static matrix items"))
                         stem, items = split_matrix_stem_and_items(cleaned_text)
                         question["stem"] = stem
-                        question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
+                        question["matrixItems"] = make_items(qid, items, "i")
                 elif template_pipe:
                     stem, items = split_matrix_stem_and_items(cleaned_text)
                     question["stem"] = stem
                     pipe_qid = find_qid_by_phrase(template_pipe.group(1), qnum_to_row, qnum_to_id)
                     if pipe_qid:
                         question["pipeInFrom"] = pipe_qid
-                        question["pipeInTemplate"] = [{"id": f"{qid}-t{i}", "label": item} for i, item in enumerate(items)]
+                        question["pipeInTemplate"] = make_items(qid, items, "t")
+                        if any(t.get("hideForDigital") for t in question["pipeInTemplate"]):
+                            mode_qnum = find_qnum_by_phrase(DIGITAL_MODE_QUESTION_PHRASE, qnum_to_row)
+                            mode_qid = qnum_to_id.get(mode_qnum)
+                            mode_row = qnum_to_row.get(mode_qnum)
+                            mode_codes = remote_only_codes(parse_response_categories(mode_row.get("Response Categories"))) if mode_row else []
+                            if mode_qid and mode_codes:
+                                question["hideForDigitalWhen"] = {"matrixQuestionId": mode_qid, "in": mode_codes}
+                                review_notes.append((qid, "digital_rows", f"row(s) flagged hideForDigital are hidden for places answered remote-only (code(s) {', '.join(mode_codes)}) in {mode_qid}"))
+                            else:
+                                review_notes.append((qid, "needs_review", "has hideForDigital row(s) but the 'how sessions were conducted' question / its remote-only option was not resolved -- rows will show for every place"))
                         # Same split, but with the bracket replaced by a
                         # substitution placeholder instead of generic text --
                         # this is what app.js actually displays per-screen
@@ -654,11 +713,11 @@ def build_hms_content():
                         review_notes.append((qid, "matrix_split", f"{len(items)} template item(s) parsed, piped from {pipe_qid}" + ("" if stem else " — EMPTY STEM, needs manual review")))
                     else:
                         review_notes.append((qid, "needs_review", "pipe-in source question not resolved from Notes -- fell back to static matrix items"))
-                        question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
+                        question["matrixItems"] = make_items(qid, items, "i")
                 else:
                     stem, items = split_matrix_stem_and_items(cleaned_text)
                     question["stem"] = stem
-                    question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
+                    question["matrixItems"] = make_items(qid, items, "i")
                     review_notes.append((qid, "matrix_split", f"{len(items)} items parsed" + ("" if stem else " — EMPTY STEM, needs manual review")))
 
             built_questions_by_id[qid] = question
@@ -912,7 +971,7 @@ def build_mecamh_content():
             if is_matrix:
                 stem, items = split_matrix_stem_and_items(question_text)
                 question["stem"] = stem
-                question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
+                question["matrixItems"] = make_items(qid, items, "i")
                 review_notes.append((qid, "matrix_split", f"{len(items)} items parsed" + ("" if stem else " — EMPTY STEM, needs manual review")))
 
             sections_by_name[sec_name].append(question)
@@ -1135,6 +1194,11 @@ def emit_show_if(cond):
     return one(cond)
 
 
+def emit_item(item):
+    extra = ", hideForDigital: true" if item.get("hideForDigital") else ""
+    return f'{{ id: {js_string(item["id"])}, label: {js_string(item["label"])}{extra} }}'
+
+
 def emit_question(q, review_by_qid, indent="        "):
     lines = [f'{indent}{{']
     lines.append(f'{indent}  id: {js_string(q["id"])},')
@@ -1154,8 +1218,12 @@ def emit_question(q, review_by_qid, indent="        "):
                 lines.append(f'{indent}    stemTemplate: {js_string(q["pipeInStemTemplate"])},')
             lines.append(f'{indent}    template: [')
             for item in q["pipeInTemplate"]:
-                lines.append(f'{indent}      {{ id: {js_string(item["id"])}, label: {js_string(item["label"])} }},')
+                lines.append(f'{indent}      {emit_item(item)},')
             lines.append(f'{indent}    ],')
+            if q.get("hideForDigitalWhen"):
+                hd = q["hideForDigitalWhen"]
+                hd_codes = ", ".join(js_string(c) for c in hd["in"])
+                lines.append(f'{indent}    hideForDigitalWhen: {{ matrixQuestionId: {js_string(hd["matrixQuestionId"])}, in: [{hd_codes}] }},')
             lines.append(f'{indent}  }},')
         elif q.get("pipeInFilter"):
             filt = q["pipeInFilter"]
@@ -1169,7 +1237,7 @@ def emit_question(q, review_by_qid, indent="        "):
     elif q.get("matrixItems"):
         lines.append(f'{indent}  items: [')
         for item in q["matrixItems"]:
-            lines.append(f'{indent}    {{ id: {js_string(item["id"])}, label: {js_string(item["label"])} }},')
+            lines.append(f'{indent}    {emit_item(item)},')
         lines.append(f'{indent}  ],')
 
     if q["options"]:

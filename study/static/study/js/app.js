@@ -95,6 +95,30 @@
     return selectedOptions;
   }
 
+  // Whether ONE piped-in place counts as a digital resource. That isn't a
+  // property of the place itself -- it's the participant's own answer for
+  // that place in the earlier "how were your sessions conducted" matrix
+  // (keyed "<matrixQuestionId>-pipe-<value>", same as the q.pipeInItems.filter
+  // lookup above). q.pipeInItems.hideForDigitalWhen names that matrix and
+  // the answer codes that mean remote-only.
+  function isDigitalPlace(q, opt) {
+    const cond = q.pipeInItems.hideForDigitalWhen;
+    if (!cond) return false;
+    const answers = state.answers[cond.matrixQuestionId];
+    const rowValue = answers && typeof answers === "object" ? answers[`${cond.matrixQuestionId}-pipe-${opt.value}`] : undefined;
+    return cond.in.includes(rowValue);
+  }
+
+  // The template rows that apply to ONE piped-in place. A row flagged
+  // hideForDigital (source annotation: "Location [Do not display for
+  // digital resources]") is dropped when that place is a digital one. Hidden
+  // rows never render and are never required, so they don't block "Next" or
+  // appear in the stored answer.
+  function templateRowsFor(q, opt) {
+    const digital = isDigitalPlace(q, opt);
+    return q.pipeInItems.template.filter((tmpl) => !(tmpl.hideForDigital && digital));
+  }
+
   // Falls back to q.items (or []) for ordinary, non-piped matrix questions.
   // For a template pipe-in, this is the flattened "one big matrix" shape
   // (rows labeled "<aspect> — <place>") -- see resolvePipeInGroups for the
@@ -109,7 +133,7 @@
     }
     const rows = [];
     selectedOptions.forEach((opt) => {
-      q.pipeInItems.template.forEach((tmpl) => {
+      templateRowsFor(q, opt).forEach((tmpl) => {
         rows.push({ id: `${q.id}-pipe-${opt.value}-${tmpl.id}`, label: `${tmpl.label} — ${opt.label}` });
       });
     });
@@ -132,7 +156,7 @@
     return selectedOptions.map((opt) => ({
       value: opt.value,
       label: opt.label,
-      rows: q.pipeInItems.template.map((tmpl) => ({ id: `${q.id}-pipe-${opt.value}-${tmpl.id}`, label: tmpl.label })),
+      rows: templateRowsFor(q, opt).map((tmpl) => ({ id: `${q.id}-pipe-${opt.value}-${tmpl.id}`, label: tmpl.label })),
     }));
   }
 
