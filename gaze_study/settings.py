@@ -29,7 +29,16 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() == 'true'
 DEBUG=False
-CSRF_TRUSTED_ORIGINS = ['https://*.trycloudflare.com']
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.trycloudflare.com',
+    'https://study.gvcl-eye-gaze-study.me',
+]
+
+# Django sits behind a Cloudflare tunnel: cloudflared terminates HTTPS and
+# forwards plain HTTP to gunicorn, so trust the forwarded-proto header.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h]
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ['*']
