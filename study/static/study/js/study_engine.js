@@ -108,6 +108,27 @@ const StudyEngine = (() => {
         Object.values(val).some((v) => v !== cond.matrixAnyNotEquals)
       );
     }
+    // "matrixAnyIn"/"matrixAnyNotIn": counterparts to matrixAnyNotEquals
+    // for the "an option was (not) selected for MATRIX_PARENT" grammar --
+    // true as soon as ANY row's value is (matrixAnyIn) / NO row's value is
+    // (matrixAnyNotIn) among the given codes. Same "any row, regardless of
+    // whether every row is answered yet" semantics as matrixAnyNotEquals.
+    if ("matrixAnyIn" in cond) {
+      return (
+        val !== null &&
+        typeof val === "object" &&
+        !Array.isArray(val) &&
+        Object.values(val).some((v) => cond.matrixAnyIn.includes(v))
+      );
+    }
+    if ("matrixAnyNotIn" in cond) {
+      return (
+        val !== null &&
+        typeof val === "object" &&
+        !Array.isArray(val) &&
+        !Object.values(val).some((v) => cond.matrixAnyNotIn.includes(v))
+      );
+    }
     // Unrecognized condition shape — fail safe by showing the item rather
     // than silently hiding study content.
     console.warn("[StudyEngine] Unrecognized condition shape:", cond);

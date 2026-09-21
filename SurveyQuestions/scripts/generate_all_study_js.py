@@ -208,7 +208,11 @@ def split_matrix_stem_and_items(question_text):
     stem_match = re.match(r"^(.*?[?:])\s+(.*)$", text, re.DOTALL)
     if stem_match:
         remainder = stem_match.group(2)
-        parts = re.split(r"(?<=[a-z\)\.\?])\s+(?=[A-Z])", remainder)
+        # "]" added to the lookbehind class -- a row that ends in its own
+        # bracketed annotation (e.g. "Location [Do not display for digital
+        # resources]") was being fused onto the next row's text, since a
+        # closing bracket wasn't a recognized row-ending character.
+        parts = re.split(r"(?<=[a-z\)\.\?\]])\s+(?=[A-Z])", remainder)
         parts = [p.strip() for p in parts if p.strip()]
         if len(parts) >= 2:
             stem, parts = _strip_boilerplate_lead(stem_match.group(1), parts)
@@ -220,7 +224,7 @@ def split_matrix_stem_and_items(question_text):
     # Intro text may itself span more than one sentence, so use a declared
     # count ("8 statements") when present to know how many trailing
     # sentences are real rows vs. lead-in instructions.
-    parts = re.split(r"(?<=[a-z\)\.])\s+(?=[A-Z])", text)
+    parts = re.split(r"(?<=[a-z\)\.\]])\s+(?=[A-Z])", text)
     parts = [p.strip() for p in parts if p.strip()]
     if len(parts) >= 2:
         count_match = re.search(r"\b(\d+)\s+(?:statements|items|questions)\b", text, re.IGNORECASE)
@@ -342,6 +346,83 @@ MATRIX_ANY_CLAUSE_RE = re.compile(
     r'\s+for\s+any\s+statement\s+in\s+' + QUOTE + r'([^"\u201c\u201d]+)' + QUOTE,
     re.IGNORECASE,
 )
+
+# ---------------------------------------------------------------------------
+# Pipe-in matrix rows -- CCMH source Notes describe some matrix questions'
+# ROWS as "whatever the participant selected in an earlier question"
+# (survey-tool "carry forward choices"), rather than fixed text. Two forms
+# seen in this workbook:
+#   "...the statements are the selected options for 'PARENT'..."      (q26)
+#   "...N statements for each option selected for 'PARENT'..."        (q28)
+# The first means "one row per selected option of PARENT". The second means
+# "the N statements bundled in this row's own Question text, repeated once
+# per selected option of PARENT" -- a template, not a literal row list.
+# Neither is wired up via the structured Parent Question # column (that's
+# reserved for showIf), so PARENT is resolved the same fuzzy way a showIf
+# clause's quoted phrase is: phrase_matches_parent() against every other
+# question's own text in the module.
+PIPE_IN_SIMPLE_RE = re.compile(
+    r"statements\s+are\s+the\s+selected\s+options\s+for\s*" + QUOTE + r"([^\"\u201c\u201d]+)" + QUOTE,
+    re.IGNORECASE,
+)
+PIPE_IN_TEMPLATE_RE = re.compile(
+    r"statements?\s+for\s+each\s+option\s+selected\s+for\s*" + QUOTE + r"([^\"\u201c\u201d]+)" + QUOTE,
+    re.IGNORECASE,
+)
+# An inline "[pipe in ...]" bracket embedded mid-sentence in the Question
+# column itself (as opposed to a Notes-column instruction) -- e.g. q28's
+# "...at [pipe in selected options from: 'PARENT']? Convenient hours...".
+# Left in place, this corrupts split_matrix_stem_and_items() (the bracket's
+# own trailing text gets sliced off as a bogus extra row). Replaced with a
+# generic phrase instead of deleted outright so the stem this produces still
+# reads as a complete sentence once dynamic rows are substituted in at
+# render time (see pipeInItems in study_engine.js/app.js).
+PIPE_IN_BRACKET_RE = re.compile(r"\[\s*pipe\s+in[^\]]*\]", re.IGNORECASE)
+
+
+def strip_pipe_in_bracket(text):
+    return PIPE_IN_BRACKET_RE.sub("each place you selected", text)
+
+
+# A THIRD pipe-in shape: a filtered pipe-in, embedded as a bracket in the
+# QUESTION text itself rather than the Notes column -- "[pipe in the
+# selected options A/B/... from the question: PARENT]" (q29's stem). Unlike
+# the two Notes-driven forms above, this doesn't name its OWN source
+# question -- PARENT here is itself a pipe-in matrix (e.g. q26, whose rows
+# are already piped in from q25), and "the selected options A/B/..." are
+# option LABELS of PARENT that filter which of PARENT's (piped-in) rows
+# qualify. So the actual row source for a filtered pipe-in is PARENT's own
+# pipeInFrom, filtered to rows where PARENT's per-row answer matches one of
+# A/B/...'s resolved option codes.
+PIPE_IN_FILTERED_BRACKET_RE = re.compile(
+    r"\[\s*pipe\s+in\s+(?:the\s+)?selected\s+options\s+(?P<filterlabels>.+?)\s+from\s+the\s+question:\s*"
+    r"(?:" + QUOTE + r")?(?P<parent>[^\[\]\"\u201c\u201d]+?)(?:" + QUOTE + r")?\s*\]",
+    re.IGNORECASE,
+)
+
+
+def find_qnum_by_phrase(phrase, qnum_to_row):
+    """Same fuzzy resolution as find_qid_by_phrase, but returns the source
+    Question # instead of the id -- needed here to look the parent's own
+    row (and options) back up afterward."""
+    best_qnum, best_ratio = None, 0.0
+    norm_phrase = normalise(phrase)
+    for qnum, row in qnum_to_row.items():
+        qtext = clean(row.get("Question"))
+        if phrase_matches_parent(phrase, qtext):
+            ratio = SequenceMatcher(None, norm_phrase, normalise(qtext)).ratio()
+            if ratio > best_ratio:
+                best_qnum, best_ratio = qnum, ratio
+    return best_qnum
+
+
+def find_qid_by_phrase(phrase, qnum_to_row, qnum_to_id):
+    """Resolves a quoted question-phrase to a question id by fuzzy-matching
+    against every question's own text in this module (same tolerance as
+    phrase_matches_parent), for references -- like the pipe-in Notes above
+    -- that name a question by text rather than via Parent Question #."""
+    return qnum_to_id.get(find_qnum_by_phrase(phrase, qnum_to_row))
+
 
 # Excel workbook sheet-tab names are hard-capped at 31 characters, and both
 # hms_survey.xlsx and mecamhsurvey.xlsx have module sheets that got silently
@@ -483,6 +564,14 @@ def build_hms_content():
         # Track each question's own type (needed to pick in/notIn vs
         # includes/excludes when a showIf clause references it as a parent).
         qid_to_type = {}
+        # Running id -> question-dict map, built incrementally as rows are
+        # processed (NOT the same as id_to_qobj below, which needs every
+        # row done first). A filtered pipe-in (see PIPE_IN_FILTERED_BRACKET_RE)
+        # names an earlier matrix question as its parent and needs that
+        # parent's OWN pipeInFrom, so it has to look the parent up while
+        # still mid-loop -- this only works because the referenced parent
+        # is always the row immediately above it in the source sheet.
+        built_questions_by_id = {}
 
         for row in rows:
             qnum = clean(row.get("Source Question #"))
@@ -493,7 +582,12 @@ def build_hms_content():
             question_text = clean(row.get("Question"))
             options = parse_response_categories(row.get("Response Categories"))
             is_matrix = "matrix" in clean(row.get("Response Type")).lower()
-            qtype = guess_type(question_text, options, is_matrix)
+            filtered_bracket = PIPE_IN_FILTERED_BRACKET_RE.search(question_text)
+            # A filtered pipe-in question (q29-style) reads as rows-of-
+            # providers even when the Response Type column never classified
+            # it as Matrix -- the bracket in its own text is what actually
+            # decides this, not that column.
+            qtype = "matrix" if filtered_bracket else guess_type(question_text, options, is_matrix)
             qid_to_type[qid] = qtype
 
             question = {
@@ -505,12 +599,60 @@ def build_hms_content():
                 "_parent_ids": [qnum_to_id[p.strip()] for p in clean(row.get("Parent Question #")).split(";")
                                 if p.strip() and p.strip() in qnum_to_id],
             }
-            if is_matrix:
-                stem, items = split_matrix_stem_and_items(question_text)
-                question["stem"] = stem
-                question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
-                review_notes.append((qid, "matrix_split", f"{len(items)} items parsed" + ("" if stem else " — EMPTY STEM, needs manual review")))
 
+            if filtered_bracket:
+                filter_qnum = find_qnum_by_phrase(filtered_bracket.group("parent"), qnum_to_row)
+                filter_qid = qnum_to_id.get(filter_qnum)
+                filter_row = qnum_to_row.get(filter_qnum)
+                filter_parent_options = parse_response_categories(filter_row.get("Response Categories")) if filter_row else []
+                filter_labels = [p.strip() for p in filtered_bracket.group("filterlabels").split("/") if p.strip()]
+                filter_codes = [c for c in (find_option_code(lbl, filter_parent_options) for lbl in filter_labels) if c is not None]
+                # The filtered question's actual row SOURCE isn't the named
+                # parent itself -- it's whatever THAT parent's own rows were
+                # piped in from (q26's rows are places piped in from q25;
+                # q29 wants those same places, just narrowed to the ones
+                # q26 marked matching filter_codes).
+                upstream_source = built_questions_by_id.get(filter_qid, {}).get("pipeInFrom") if filter_qid else None
+                question["stem"] = PIPE_IN_FILTERED_BRACKET_RE.sub("", question_text).strip()
+                if filter_qid and upstream_source and len(filter_codes) == len(filter_labels):
+                    question["pipeInFrom"] = upstream_source
+                    question["pipeInFilter"] = {"matrixQuestionId": filter_qid, "in": filter_codes}
+                else:
+                    review_notes.append((qid, "needs_review", "filtered pipe-in source/options not fully resolved -- left as an unfiltered question, needs manual review"))
+            elif is_matrix:
+                notes_text = clean(row.get("Notes"))
+                simple_pipe = PIPE_IN_SIMPLE_RE.search(notes_text)
+                template_pipe = PIPE_IN_TEMPLATE_RE.search(notes_text)
+                cleaned_text = strip_pipe_in_bracket(question_text)
+
+                if simple_pipe:
+                    pipe_qid = find_qid_by_phrase(simple_pipe.group(1), qnum_to_row, qnum_to_id)
+                    question["stem"] = cleaned_text
+                    if pipe_qid:
+                        question["pipeInFrom"] = pipe_qid
+                    else:
+                        review_notes.append((qid, "needs_review", "pipe-in source question not resolved from Notes -- fell back to static matrix items"))
+                        stem, items = split_matrix_stem_and_items(cleaned_text)
+                        question["stem"] = stem
+                        question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
+                elif template_pipe:
+                    stem, items = split_matrix_stem_and_items(cleaned_text)
+                    question["stem"] = stem
+                    pipe_qid = find_qid_by_phrase(template_pipe.group(1), qnum_to_row, qnum_to_id)
+                    if pipe_qid:
+                        question["pipeInFrom"] = pipe_qid
+                        question["pipeInTemplate"] = [{"id": f"{qid}-t{i}", "label": item} for i, item in enumerate(items)]
+                        review_notes.append((qid, "matrix_split", f"{len(items)} template item(s) parsed, piped from {pipe_qid}" + ("" if stem else " — EMPTY STEM, needs manual review")))
+                    else:
+                        review_notes.append((qid, "needs_review", "pipe-in source question not resolved from Notes -- fell back to static matrix items"))
+                        question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
+                else:
+                    stem, items = split_matrix_stem_and_items(cleaned_text)
+                    question["stem"] = stem
+                    question["matrixItems"] = [{"id": f"{qid}-i{i}", "label": item} for i, item in enumerate(items)]
+                    review_notes.append((qid, "matrix_split", f"{len(items)} items parsed" + ("" if stem else " — EMPTY STEM, needs manual review")))
+
+            built_questions_by_id[qid] = question
             sections_by_name[sec_name].append(question)
 
         # showIf resolution, now operator-aware based on the PARENT's type.
@@ -632,7 +774,17 @@ def build_hms_content():
 
                     is_multi_parent = parent_type == "multi"
                     negated = negations == {True}
-                    if is_multi_parent:
+                    if parent_type == "matrix":
+                        # Parent is a matrix (e.g. q26): "X is selected for
+                        # PARENT" means "some row of PARENT's answer is X",
+                        # not "PARENT's own answer is X" -- PARENT's answer
+                        # is a per-row object, not a scalar, so plain in/
+                        # notIn (which compare against a scalar) can never
+                        # match. matrixAnyIn/matrixAnyNotIn read it per-row
+                        # the same way matrixAnyNotEquals already does for
+                        # its own grammar above.
+                        key = "matrixAnyNotIn" if negated else "matrixAnyIn"
+                    elif is_multi_parent:
                         key = "excludesAny" if negated else "includesAny"
                     else:
                         key = "notIn" if negated else "in"
@@ -783,17 +935,68 @@ def order_module_by_direction(module, direction):
     `_score` per question; `_role` defaults to Independent when absent."""
     sign = 1 if direction == "ascending" else -1
 
-    section_scores = []
+    # Per-section anchor score, same as before.
+    section_score = {}
     for sec in module["sections"]:
         qs = sec["questions"]
         anchors = [q for q in qs if q.get("_role", "Independent Question") != "Follow-up Question"]
         best = min((q["_score"] for q in anchors), default=min((q["_score"] for q in qs), default=0))
-        section_scores.append((sign * best, sec))
-    section_scores.sort(key=lambda t: t[0])
-    section_order = [sec["id"] for _score, sec in section_scores]
+        section_score[sec["id"]] = sign * best
+
+    # Cross-section dependency edges: if question in dependent's section
+    # cites a parent id living in a DIFFERENT section, the whole dependent
+    # section has to be delivered after that parent section -- otherwise
+    # the dependent question's showIf evaluates against an unanswered
+    # parent (permanently hidden, since the cursor never revisits earlier
+    # positions) the moment the two sections land on opposite sides of the
+    # pure-score sort below. The within-section union-find further down
+    # already keeps same-section mother/follow-up pairs adjacent; this is
+    # the section-level analogue for cross-section pairs (e.g. Utilization
+    # Q40's showIf cites Q7/Q12, which live in different sections than Q40
+    # itself; Q27-Q30's showIf cites Q22/Q23/Q26, in a different section
+    # again). A pure per-section score sort has no way to know about these
+    # -- it can and did put the dependent section first purely because its
+    # own anchor score happened to sort that way under one direction.
+    id_to_section = {q["id"]: sec["id"] for sec in module["sections"] for q in sec["questions"]}
+    deps = {sec["id"]: set() for sec in module["sections"]}
+    for sec in module["sections"]:
+        for q in sec["questions"]:
+            parent_ids = list(q.get("_parent_ids", []) or [])
+            implicit_pid = q.get("_implicit_after")
+            if implicit_pid:
+                parent_ids.append(implicit_pid)
+            for pid in parent_ids:
+                parent_sec = id_to_section.get(pid)
+                if parent_sec and parent_sec != sec["id"]:
+                    deps[sec["id"]].add(parent_sec)
+
+    # Stable topological sort: repeatedly pick the best-scoring section
+    # among those whose dependency sections are already placed. Degrades
+    # to the original pure score sort whenever there are no cross-section
+    # dependencies (deps all empty), so this is a strict generalization,
+    # not a behavior change for modules that don't need it.
+    remaining = {sec["id"] for sec in module["sections"]}
+    placed = []
+    placed_set = set()
+    while remaining:
+        ready = [sid for sid in remaining if deps[sid] <= placed_set]
+        if not ready:
+            # A dependency cycle shouldn't happen in practice (it would mean
+            # two sections each need a question from the other answered
+            # first) -- fall back to plain score order for whatever's left
+            # rather than looping forever.
+            ready = list(remaining)
+        ready.sort(key=lambda sid: section_score[sid])
+        chosen = ready[0]
+        placed.append(chosen)
+        placed_set.add(chosen)
+        remaining.discard(chosen)
+    id_to_sec_obj = {sec["id"]: sec for sec in module["sections"]}
+    section_order = placed
 
     question_order = {}
-    for _score, sec in section_scores:
+    for sec_id in section_order:
+        sec = id_to_sec_obj[sec_id]
         qs = sec["questions"]
         id_to_q = {q["id"]: q for q in qs}
 
@@ -910,7 +1113,7 @@ def emit_show_if(cond):
         for key in ("equals", "notEquals", "matrixAnyNotEquals"):
             if key in c:
                 return f'{{ questionId: {js_string(c["questionId"])}, {key}: {js_string(c[key])} }}'
-        for key in ("in", "notIn", "includes", "excludes", "includesAny", "excludesAny"):
+        for key in ("in", "notIn", "includes", "excludes", "includesAny", "excludesAny", "matrixAnyIn", "matrixAnyNotIn"):
             if key in c:
                 val = c[key]
                 if isinstance(val, list):
@@ -932,7 +1135,27 @@ def emit_question(q, review_by_qid, indent="        "):
     for kind, detail in review_by_qid.get(q["id"], []):
         lines.append(f'{indent}  // TODO-VERIFY ({kind}): {detail}')
 
-    if q.get("matrixItems"):
+    if q.get("pipeInFrom"):
+        # Rows are resolved at render time (app.js:resolvePipeInItems) from
+        # whatever the participant selected for pipeInFrom, not fixed here.
+        if q.get("pipeInTemplate"):
+            lines.append(f'{indent}  pipeInItems: {{')
+            lines.append(f'{indent}    fromQuestionId: {js_string(q["pipeInFrom"])},')
+            lines.append(f'{indent}    template: [')
+            for item in q["pipeInTemplate"]:
+                lines.append(f'{indent}      {{ id: {js_string(item["id"])}, label: {js_string(item["label"])} }},')
+            lines.append(f'{indent}    ],')
+            lines.append(f'{indent}  }},')
+        elif q.get("pipeInFilter"):
+            filt = q["pipeInFilter"]
+            codes = ", ".join(js_string(c) for c in filt["in"])
+            lines.append(f'{indent}  pipeInItems: {{')
+            lines.append(f'{indent}    fromQuestionId: {js_string(q["pipeInFrom"])},')
+            lines.append(f'{indent}    filter: {{ matrixQuestionId: {js_string(filt["matrixQuestionId"])}, in: [{codes}] }},')
+            lines.append(f'{indent}  }},')
+        else:
+            lines.append(f'{indent}  pipeInItems: {{ fromQuestionId: {js_string(q["pipeInFrom"])} }},')
+    elif q.get("matrixItems"):
         lines.append(f'{indent}  items: [')
         for item in q["matrixItems"]:
             lines.append(f'{indent}    {{ id: {js_string(item["id"])}, label: {js_string(item["label"])} }},')
