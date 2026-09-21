@@ -1471,10 +1471,8 @@ window.STUDY_MODULES = [
         {
           id: "hms-mental-health-service-utilization-q26",
           type: "matrix",
-          stem: "",
-          items: [
-            { id: "hms-mental-health-service-utilization-q26-i0", label: "Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted?" },
-          ],
+          stem: "Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted?",
+          pipeInItems: { fromQuestionId: "hms-mental-health-service-utilization-q25" },
           options: [
             { value: "1", label: "In-person only" },
             { value: "2", label: "Remote/telehealth only (digital video conferencing, text/app chat, etc…)" },
@@ -1507,15 +1505,18 @@ window.STUDY_MODULES = [
         {
           id: "hms-mental-health-service-utilization-q28",
           type: "matrix",
-          stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at [pipe in selected options from:",
-          items: [
-            { id: "hms-mental-health-service-utilization-q28-i0", label: "“From which of the following places did you receive counseling or therapy?”]?" },
-            { id: "hms-mental-health-service-utilization-q28-i1", label: "Convenient hours" },
-            { id: "hms-mental-health-service-utilization-q28-i2", label: "Location [Do not display for digital resources] Quality of therapists/counselors" },
-            { id: "hms-mental-health-service-utilization-q28-i3", label: "Respect for my privacy concerns" },
-            { id: "hms-mental-health-service-utilization-q28-i4", label: "Ability to schedule appointments without long delays" },
-            { id: "hms-mental-health-service-utilization-q28-i5", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
-          ],
+          stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at each place you selected?",
+          pipeInItems: {
+            fromQuestionId: "hms-mental-health-service-utilization-q25",
+            template: [
+              { id: "hms-mental-health-service-utilization-q28-t0", label: "Convenient hours" },
+              { id: "hms-mental-health-service-utilization-q28-t1", label: "Location [Do not display for digital resources]" },
+              { id: "hms-mental-health-service-utilization-q28-t2", label: "Quality of therapists/counselors" },
+              { id: "hms-mental-health-service-utilization-q28-t3", label: "Respect for my privacy concerns" },
+              { id: "hms-mental-health-service-utilization-q28-t4", label: "Ability to schedule appointments without long delays" },
+              { id: "hms-mental-health-service-utilization-q28-t5", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
+            ],
+          },
           options: [
             { value: "6", label: "Very satisfied" },
             { value: "5", label: "Satisfied" },
@@ -1529,8 +1530,12 @@ window.STUDY_MODULES = [
         },
         {
           id: "hms-mental-health-service-utilization-q29",
-          type: "nominal",
-          stem: "How satisfied/dissatisfied are you with the telemental health services you have received from the following providers? [pipe in the selected options remote/both in-person & remote from the question: Of the places you reported receiving counseling or therapy, how were your counseling or therapy sessions conducted?]",
+          type: "matrix",
+          stem: "How satisfied/dissatisfied are you with the telemental health services you have received from the following providers?",
+          pipeInItems: {
+            fromQuestionId: "hms-mental-health-service-utilization-q25",
+            filter: { matrixQuestionId: "hms-mental-health-service-utilization-q26", in: ["2", "3"] },
+          },
           options: [
             { value: "6", label: "Very satisfied" },
             { value: "5", label: "Satisfied" },
@@ -1539,7 +1544,7 @@ window.STUDY_MODULES = [
             { value: "2", label: "Dissatisfied" },
             { value: "1", label: "Very dissatisfied" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q26", in: ["2", "3"] },
+          showIf: { questionId: "hms-mental-health-service-utilization-q26", matrixAnyIn: ["2", "3"] },
           group: "hms-mental-health-service-utilization-q22",
         },
         {
