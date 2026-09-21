@@ -2,7 +2,7 @@
    the HMS scoring pipeline output, and MECAMH_question_score_reordered.xlsx.
    Do not hand-edit content here except to resolve a `// TODO-VERIFY` comment --
    regenerate from the workbooks instead for any other change.
-   4 TODO-VERIFY comment(s) below need a human check before this
+   5 TODO-VERIFY comment(s) below need a human check before this
    schema is used with real participants. Ordering lives in study_config.js,
    not here. */
 
@@ -1506,17 +1506,19 @@ window.STUDY_MODULES = [
           id: "hms-mental-health-service-utilization-q28",
           type: "matrix",
           stem: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at each place you selected?",
+          // TODO-VERIFY (digital_rows): row(s) flagged hideForDigital are hidden for places answered remote-only (code(s) 2) in hms-mental-health-service-utilization-q26
           pipeInItems: {
             fromQuestionId: "hms-mental-health-service-utilization-q25",
             stemTemplate: "How satisfied/dissatisfied are you with the following aspects of your therapy or counseling that you received in the past 12 months at {option}?",
             template: [
               { id: "hms-mental-health-service-utilization-q28-t0", label: "Convenient hours" },
-              { id: "hms-mental-health-service-utilization-q28-t1", label: "Location [Do not display for digital resources]" },
+              { id: "hms-mental-health-service-utilization-q28-t1", label: "Location", hideForDigital: true },
               { id: "hms-mental-health-service-utilization-q28-t2", label: "Quality of therapists/counselors" },
               { id: "hms-mental-health-service-utilization-q28-t3", label: "Respect for my privacy concerns" },
               { id: "hms-mental-health-service-utilization-q28-t4", label: "Ability to schedule appointments without long delays" },
               { id: "hms-mental-health-service-utilization-q28-t5", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
             ],
+            hideForDigitalWhen: { matrixQuestionId: "hms-mental-health-service-utilization-q26", in: ["2"] },
           },
           options: [
             { value: "6", label: "Very satisfied" },
