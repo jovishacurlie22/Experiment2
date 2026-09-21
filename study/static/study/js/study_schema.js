@@ -2,7 +2,7 @@
    the HMS scoring pipeline output, and MECAMH_question_score_reordered.xlsx.
    Do not hand-edit content here except to resolve a `// TODO-VERIFY` comment --
    regenerate from the workbooks instead for any other change.
-   5 TODO-VERIFY comment(s) below need a human check before this
+   3 TODO-VERIFY comment(s) below need a human check before this
    schema is used with real participants. Ordering lives in study_config.js,
    not here. */
 
@@ -1645,7 +1645,6 @@ window.STUDY_MODULES = [
           id: "hms-mental-health-service-utilization-q36",
           type: "multi",
           stem: "Of the medication(s) you just noted, which are you currently taking? (Select all that apply)",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#31
           options: [
             { value: "1", label: "Psychostimulants (methylphenidate (Ritalin, or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
             { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
@@ -1656,7 +1655,7 @@ window.STUDY_MODULES = [
             { value: "7", label: "Other medication for mental or emotional health" },
             { value: "8", label: "None of the above", exclusive: true },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q31", any: true },
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
           group: "hms-mental-health-service-utilization-q31",
         },
         {
@@ -1700,14 +1699,13 @@ window.STUDY_MODULES = [
           id: "hms-mental-health-service-utilization-q41",
           type: "nominal",
           stem: "During the past year, for how long, in total, have you taken the following medication(s)?",
-          // TODO-VERIFY (needs_review): no clause matched parent Q#31
           options: [
             { value: "1", label: "Less than 1 month" },
             { value: "2", label: "Between 1 and 2 months" },
             { value: "3", label: "2 months or more" },
             { value: "4", label: "Did not take" },
           ],
-          showIf: { questionId: "hms-mental-health-service-utilization-q31", any: true },
+          showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
           group: "hms-mental-health-service-utilization-q31",
         },
         {
