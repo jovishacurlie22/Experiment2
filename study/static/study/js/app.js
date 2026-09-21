@@ -715,9 +715,8 @@
 
     function currentMatrixItems() {
       if (q.type !== "matrix") return null;
-      const allItems = resolvePipeInItems(q);
-      if (!matrixPage) return allItems;
-      return allItems.slice(matrixPage.start, matrixPage.start + matrixPage.size);
+      if (!matrixPage) return q.items;
+      return q.items.slice(matrixPage.start, matrixPage.start + matrixPage.size);
     }
 
     function renderCard() {
@@ -848,7 +847,7 @@
       if (q.type === "matrix" && !matrixPage) {
         const rowsPerPage = paginateMatrixIfNeeded();
         if (rowsPerPage) {
-          matrixPage = { start: 0, size: rowsPerPage, index: 0, totalPages: Math.ceil(resolvePipeInItems(q).length / rowsPerPage) };
+          matrixPage = { start: 0, size: rowsPerPage, index: 0, totalPages: Math.ceil(q.items.length / rowsPerPage) };
           renderCard();
         }
       }
