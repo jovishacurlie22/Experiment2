@@ -430,8 +430,8 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "hms-financial-stress-socioeconom-ic-status",
-        title: "Socioeconom ic status",
+        id: "hms-financial-stress-socioeconomic-status",
+        title: "Socioeconomic status",
         questions: [
         {
           id: "hms-financial-stress-q2",

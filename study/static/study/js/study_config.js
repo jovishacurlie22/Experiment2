@@ -42,7 +42,7 @@ window.STUDY_CONFIG_ASC = {
     "hms-financial-stress": [
       "hms-financial-stress-spending",
       "hms-financial-stress-housing-concerns",
-      "hms-financial-stress-socioeconom-ic-status",
+      "hms-financial-stress-socioeconomic-status",
       "hms-financial-stress-scholarship-status",
       "hms-financial-stress-financing-education",
     ],
@@ -121,7 +121,7 @@ window.STUDY_CONFIG_ASC = {
       "hms-financial-stress-q7",
       "hms-financial-stress-q8",
     ],
-    "hms-financial-stress-socioeconom-ic-status": [
+    "hms-financial-stress-socioeconomic-status": [
       "hms-financial-stress-q2",
       "hms-financial-stress-q1",
       "hms-financial-stress-q4",
@@ -318,7 +318,7 @@ window.STUDY_CONFIG_DESC = {
     "hms-financial-stress": [
       "hms-financial-stress-financing-education",
       "hms-financial-stress-scholarship-status",
-      "hms-financial-stress-socioeconom-ic-status",
+      "hms-financial-stress-socioeconomic-status",
       "hms-financial-stress-housing-concerns",
       "hms-financial-stress-spending",
     ],
@@ -360,7 +360,7 @@ window.STUDY_CONFIG_DESC = {
       "hms-overall-health-q14",
       "hms-overall-health-q15",
     ],
-    "hms-financial-stress-socioeconom-ic-status": [
+    "hms-financial-stress-socioeconomic-status": [
       "hms-financial-stress-q5",
       "hms-financial-stress-q3",
       "hms-financial-stress-q4",
