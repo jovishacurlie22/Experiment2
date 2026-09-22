@@ -2,6 +2,7 @@
 python manage.py export_response_times --output response_times.csv
 python manage.py export_response_times --participant 12 --output p12_response_times.csv
 python manage.py export_response_times --session-key <uuid> --output session_response_times.csv
+scp iiitb@172.16.203.16:~/Experiment2/responses.csv D:\Experiment2\
 """
 
 import csv
