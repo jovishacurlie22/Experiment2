@@ -81,7 +81,8 @@ class QuestionResponse(models.Model):
         null=True, blank=True, help_text="When the participant submitted the answer (client clock)."
     )
     server_received_at = models.DateTimeField(auto_now_add=True)
-
+    presented_epoch_ms = models.BigIntegerField(null=True, blank=True)
+    answered_epoch_ms = models.BigIntegerField(null=True, blank=True)
     class Meta:
         ordering = ["session", "server_received_at"]
         unique_together = ("session", "question_id")

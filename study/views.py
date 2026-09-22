@@ -224,6 +224,9 @@ def submit_response(request):
     if not question_id:
         return JsonResponse({"error": "question_id is required"}, status=400)
 
+    presented_dt = parse_client_dt(payload.get("presented_at"))
+    answered_dt = parse_client_dt(payload.get("answered_at"))
+
     response, _created = QuestionResponse.objects.update_or_create(
         session=session,
         question_id=question_id,
@@ -232,8 +235,10 @@ def submit_response(request):
             "section_id": payload.get("section_id", ""),
             "answer_value": payload.get("answer_value", ""),
             "effort_rating": payload.get("effort_rating"),
-            "presented_at": parse_client_dt(payload.get("presented_at")),
-            "answered_at": parse_client_dt(payload.get("answered_at")),
+            "presented_at": presented_dt,
+            "answered_at": answered_dt,
+            "presented_epoch_ms": to_epoch_ms(presented_dt),
+            "answered_epoch_ms": to_epoch_ms(answered_dt),
         },
     )
     return JsonResponse({"ok": True, "response_id": response.id})
