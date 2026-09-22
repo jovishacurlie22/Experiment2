@@ -170,20 +170,18 @@ class RecordingChunk(models.Model):
 def recording_path(instance, filename):
     return (
         f"recordings/{instance.session.participant.participant_code}/"
-        f"{instance.session.session_key}/{instance.stream_source}.webm"
+        f"{instance.session.session_key}/"
+        f"{instance.session.participant.participant_code}-{instance.stream_source}.webm"
     )
 
 
 class Recording(models.Model):
-    """Final assembled recording per stream per session, built by
-    concatenating RecordingChunk files in sequence order once the last
-    chunk for that stream has arrived."""
-
     session = models.ForeignKey(
         StudySession, related_name="recordings", on_delete=models.CASCADE
     )
     stream_source = models.CharField(max_length=10, choices=RecordingChunk.STREAM_CHOICES)
     file = models.FileField(upload_to=recording_path, blank=True)
+    sidecar_file = models.FileField(upload_to=recording_path, blank=True, null=True)
     chunk_count = models.PositiveIntegerField(default=0)
     started_at = models.DateTimeField(null=True, blank=True)
     finalized_at = models.DateTimeField(null=True, blank=True)

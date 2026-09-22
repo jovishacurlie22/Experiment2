@@ -22,7 +22,7 @@ class QuestionResponseInline(admin.TabularInline):
 class RecordingInline(admin.TabularInline):
     model = Recording
     extra = 0
-    fields = ("stream_source", "file", "chunk_count", "started_at", "finalized_at")
+    fields = ("stream_source", "file", "sidecar_file", "chunk_count", "started_at", "finalized_at")
     readonly_fields = fields
     can_delete = False
 

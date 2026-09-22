@@ -430,7 +430,7 @@ const CaptureSession = (() => {
         audio: false,
       });
       screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { width: 1920, height: 1080, frameRate: { ideal: 60 } },
+        video: { width: 1920, height: 1080, frameRate: { ideal: 60, max: 60 } },
         audio: false,
       });
 

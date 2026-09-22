@@ -5,6 +5,7 @@ import threading
 import uuid
 from pathlib import Path
 import os
+import datetime as dt
 
 from django.conf import settings
 from django.db import connection
@@ -471,9 +472,35 @@ def finalize_stream_from_chunks(session, stream_source):
         [json.dumps(manifest, indent=2)], "w",
     )
 
-    output_path = os.path.join(session_dir, f"{stream_source}.mp4")
+    output_path = os.path.join(
+        session_dir, f"{session.participant.participant_code}-{stream_source}.mp4"
+    )
     with _MUX_LOCK:
         mux_and_lock_cfr(raw_partial_path, avg_fps, target_fps, Path(output_path))
+        # Earliest recording_start event logged for this stream (from the
+    # capture_session.js sendBeacon), used to backfill Recording.started_at.
+    start_event = (
+        ActivityEvent.objects
+        .filter(session=session, event_type="recording_start", stream_source=stream_source)
+        .order_by("epoch_ms")
+        .first()
+    )
+    started_at = (
+        dt.datetime.fromtimestamp(start_event.epoch_ms / 1000, tz=dt.timezone.utc)
+        if start_event else None
+    )
+
+    Recording.objects.update_or_create(
+        session=session,
+        stream_source=stream_source,
+        defaults={
+            "file": os.path.relpath(output_path, settings.MEDIA_ROOT),
+            "sidecar_file": os.path.relpath(sidecar_path, settings.MEDIA_ROOT),
+            "chunk_count": total_frames,
+            "started_at": started_at,
+            "finalized_at": timezone.now(),
+        },
+    )
 
     Recording.objects.update_or_create(
         session=session,
