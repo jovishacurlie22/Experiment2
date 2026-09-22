@@ -657,10 +657,16 @@
 
   // Single-select dropdown for a small fixed set of numeric/ordinal
   // values (e.g. hours of sleep) where a full choice-card list would be
-  // too visually heavy.
+  // too visually heavy. A dropdown can carry either a fixed q.options list
+  // (the normal case), or, when the upper bound is per-participant rather
+  // than fixed in the schema (e.g. the Concussion/TBI "how old were you"
+  // follow-ups, capped at whatever age the participant entered in
+  // Demographics), q.minValue + q.maxRef instead — see
+  // dynamicRangeOptions() below.
   function renderDropdown(q) {
     const val = state.answers[q.id] || "";
-    const optionsHtml = q.options
+    const options = q.options && q.options.length > 0 ? q.options : dynamicRangeOptions(q);
+    const optionsHtml = options
       .map(
         (opt) => `<option value="${opt.value}" ${opt.value === val ? "selected" : ""}>${opt.label}</option>`
       )
@@ -668,6 +674,26 @@
     return `<div class="text-input-wrap"><select id="text-answer"><option value="" disabled ${
       val ? "" : "selected"
     }>Select…</option>${optionsHtml}</select></div>`;
+  }
+
+  // Builds a q.minValue..N option list for a dropdown whose upper bound
+  // isn't known until the participant has answered an earlier question
+  // (q.maxRef names that question's id -- always Demographics Age today,
+  // but not hardcoded to it). Falls back to an empty list (dropdown shows
+  // only the "Select…" placeholder, Next stays disabled via the empty-
+  // value guard already in bindInputs) if that answer isn't a valid
+  // number yet -- shouldn't normally happen since Demographics always
+  // runs first, but fails safe rather than throwing or showing a bogus
+  // range.
+  function dynamicRangeOptions(q) {
+    if (q.minValue === undefined || !q.maxRef) return [];
+    const max = parseInt(state.answers[q.maxRef], 10);
+    if (!Number.isFinite(max) || max < q.minValue) return [];
+    const options = [];
+    for (let n = q.minValue; n <= max; n++) {
+      options.push({ value: String(n), label: String(n) });
+    }
+    return options;
   }
 
   // A shared response scale (q.options) rated once per sub-item (q.items).

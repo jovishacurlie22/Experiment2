@@ -2,7 +2,7 @@
    the HMS scoring pipeline output, and MECAMH_question_score_reordered.xlsx.
    Do not hand-edit content here except to resolve a `// TODO-VERIFY` comment --
    regenerate from the workbooks instead for any other change.
-   3 TODO-VERIFY comment(s) below need a human check before this
+   6 TODO-VERIFY comment(s) below need a human check before this
    schema is used with real participants. Ordering lives in study_config.js,
    not here. */
 
@@ -18,9 +18,44 @@ window.STUDY_MODULES = [
         questions: [
         {
           id: "demographics-q1",
-          type: "numeric",
+          type: "dropdown",
           stem: "How old are you?",
-          options: [],
+          // TODO-VERIFY (needs_review): type changed to 'dropdown' (18-50) -- app.js has no renderer for this type yet, needs a <select> populated from options
+          options: [
+            { value: "18", label: "18" },
+            { value: "19", label: "19" },
+            { value: "20", label: "20" },
+            { value: "21", label: "21" },
+            { value: "22", label: "22" },
+            { value: "23", label: "23" },
+            { value: "24", label: "24" },
+            { value: "25", label: "25" },
+            { value: "26", label: "26" },
+            { value: "27", label: "27" },
+            { value: "28", label: "28" },
+            { value: "29", label: "29" },
+            { value: "30", label: "30" },
+            { value: "31", label: "31" },
+            { value: "32", label: "32" },
+            { value: "33", label: "33" },
+            { value: "34", label: "34" },
+            { value: "35", label: "35" },
+            { value: "36", label: "36" },
+            { value: "37", label: "37" },
+            { value: "38", label: "38" },
+            { value: "39", label: "39" },
+            { value: "40", label: "40" },
+            { value: "41", label: "41" },
+            { value: "42", label: "42" },
+            { value: "43", label: "43" },
+            { value: "44", label: "44" },
+            { value: "45", label: "45" },
+            { value: "46", label: "46" },
+            { value: "47", label: "47" },
+            { value: "48", label: "48" },
+            { value: "49", label: "49" },
+            { value: "50", label: "50" },
+          ],
         },
         ]
       },
@@ -235,9 +270,12 @@ window.STUDY_MODULES = [
         },
         {
           id: "hms-overall-health-q10",
-          type: "text",
+          type: "dropdown",
           stem: "How old were you the first time you were knocked out or lost consciousness?",
+          // TODO-VERIFY (needs_review): type changed to 'dropdown' (2..Demographics age) -- app.js has no renderer for this type yet, needs a <select> populated at render time from minValue up to state.answers[maxRef]
           options: [],
+          minValue: 2,
+          maxRef: "demographics-q1",
           showIf: { questionId: "hms-overall-health-q6", in: ["1"] },
           group: "hms-overall-health-q6",
         },
@@ -254,9 +292,12 @@ window.STUDY_MODULES = [
         },
         {
           id: "hms-overall-health-q8",
-          type: "text",
+          type: "dropdown",
           stem: "How old were you the first time you were dazed or have a gap in your memory from an injury?",
+          // TODO-VERIFY (needs_review): type changed to 'dropdown' (2..Demographics age) -- app.js has no renderer for this type yet, needs a <select> populated at render time from minValue up to state.answers[maxRef]
           options: [],
+          minValue: 2,
+          maxRef: "demographics-q1",
           showIf: { questionId: "hms-overall-health-q7", in: ["1"] },
           group: "hms-overall-health-q7",
         },
@@ -641,6 +682,8 @@ window.STUDY_MODULES = [
             { value: "4", label: "Somewhat positive effect" },
             { value: "5", label: "Strong positive effect" },
           ],
+          showIf: { questionId: "demographics-q3", in: ["4", "5"] },
+          group: "hms-academic-persistence-retention-and-competition-q13",
         },
         ]
       },

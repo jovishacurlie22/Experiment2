@@ -526,9 +526,21 @@ def load_sheet_rows(path, sheet_name):
 # Content builders
 # ---------------------------------------------------------------------------
 
+# Fixed dropdown range for the Demographics Age question, per Jovisha --
+# independent of whatever the source Response Categories cell has (it's
+# blank today, giving free-text "numeric" via the old/age regex below).
+DEMOGRAPHICS_AGE_MIN = 18
+DEMOGRAPHICS_AGE_MAX = 50
+
+
 def build_demographics():
     """No scoring exists (or is wanted) for this sheet -- fixed source
-    order, one section per row (as given), always module id 'demographics'."""
+    order, one section per row (as given), always module id 'demographics'.
+    Also returns the Age question's id and the Role question's id/text/
+    options -- the only things outside this module that need to reference
+    a Demographics question (Age, for the TBI dropdowns' maxRef; Role, for
+    Faculty Advising's showIf, resolved from hms_survey.xlsx's own Notes
+    text in build_hms_content() rather than hardcoded here)."""
     wb = openpyxl.load_workbook("../csvs/Demographics.xlsx", data_only=True)
     ws = wb["Demographics"]
     headers = [c.value for c in next(ws.iter_rows(max_row=1))]
@@ -538,6 +550,8 @@ def build_demographics():
     sections = []
     section_order = []
     review_notes = []
+    age_qid = None
+    demographics_role = None
 
     for i, row in enumerate(rows, start=1):
         # Row 5 has "Department" in the Module column instead of "Demographics"
@@ -551,10 +565,23 @@ def build_demographics():
         if not options and qtype == "text" and re.search(r"\bold\b|\bage\b", question_text, re.IGNORECASE):
             qtype = "numeric"
 
+        if sec_name == "Age":
+            qtype = "dropdown"
+            options = [
+                {"code": str(n), "label": str(n), "exclusive": False, "otherFreeText": False}
+                for n in range(DEMOGRAPHICS_AGE_MIN, DEMOGRAPHICS_AGE_MAX + 1)
+            ]
+            age_qid = qid
+            review_notes.append((qid, "needs_review",
+                "type changed to 'dropdown' (18-50) -- app.js has no renderer for this type yet, needs a <select> populated from options"))
+
         question = {"id": qid, "type": qtype, "stem": question_text, "options": options}
         sections.append((sec_name, question))
         if sec_name not in section_order:
             section_order.append(sec_name)
+
+        if sec_name == "Role":
+            demographics_role = {"qid": qid, "text": question_text, "options": options}
 
     sections_by_name = {}
     for sec_name, q in sections:
@@ -577,10 +604,14 @@ def build_demographics():
     # here instead, or main() ends up writing raw names like "Age" into
     # sectionOrder.demographics instead of "demographics-age".
     section_ids = [f"{module_id}-{slugify(name)}" for name in section_order]
-    return module, section_ids, review_notes
+    if age_qid is None:
+        review_notes.append(("demographics", "needs_review", "no 'Age' section found -- Age dropdown override never applied"))
+    if demographics_role is None:
+        review_notes.append(("demographics", "needs_review", "no 'Role' section found -- Faculty Advising showIf can never resolve"))
+    return module, section_ids, review_notes, age_qid, demographics_role
 
 
-def build_hms_content():
+def build_hms_content(age_qid=None, demographics_role=None):
     wb = openpyxl.load_workbook("../outputs/hms_question_score_reordered.xlsx", data_only=True)
     module_sheets = [sn for sn in wb.sheetnames if sn not in ("Read Me", "Overview")]
 
@@ -637,6 +668,18 @@ def build_hms_content():
             # it as Matrix -- the bracket in its own text is what actually
             # decides this, not that column.
             qtype = "matrix" if filtered_bracket else guess_type(question_text, options, is_matrix)
+            # Concussion/TBI history "How old were you the first time..."
+            # follow-ups (Overall Health): were free "[open text] force
+            # numeric", per Jovisha these become a dropdown from 2 up to
+            # whatever age the participant entered in Demographics -- the
+            # upper bound is per-participant, so it can't be enumerated
+            # here; maxRef just names the Demographics Age question for
+            # app.js to read at render time. Their real showIf (from "1=Yes"
+            # on the parent knocked-out/dazed question) is untouched --
+            # only the type/options change.
+            is_tbi_age_followup = bool(age_qid) and re.match(r"how old were you the first time", question_text, re.IGNORECASE)
+            if is_tbi_age_followup:
+                qtype = "dropdown"
             qid_to_type[qid] = qtype
 
             question = {
@@ -648,6 +691,11 @@ def build_hms_content():
                 "_parent_ids": [qnum_to_id[p.strip()] for p in clean(row.get("Parent Question #")).split(";")
                                 if p.strip() and p.strip() in qnum_to_id],
             }
+            if is_tbi_age_followup:
+                question["minValue"] = 2
+                question["maxRef"] = age_qid
+                review_notes.append((qid, "needs_review",
+                    "type changed to 'dropdown' (2..Demographics age) -- app.js has no renderer for this type yet, needs a <select> populated at render time from minValue up to state.answers[maxRef]"))
 
             if filtered_bracket:
                 filter_qnum = find_qnum_by_phrase(filtered_bracket.group("parent"), qnum_to_row)
@@ -888,6 +936,38 @@ def build_hms_content():
                         seen.add(rp)
                         root_num = rp
                     q["group"] = qnum_to_id.get(root_num, qid)
+
+        # Faculty Advising (PhD Students): question_score.py already labels
+        # this one item role="PhD Advising Question" instead of "Follow-up
+        # Question" (see is_phd_advising_dependency()) because its Parent
+        # Question # can never resolve within this sheet -- its Notes text
+        # names the Demographics Role question, which lives in a different
+        # source file question_score.py never sees. Resolved here instead,
+        # straight from that same Notes text (q["_raw_skip"]), reusing the
+        # exact same "'X' [or 'Y'] is selected for 'PARENT'" clause grammar
+        # (extract_clauses/phrase_matches_parent/find_option_code) every
+        # in-module follow-up already goes through -- just pointed at
+        # Demographics' Role question/options instead of a same-sheet one.
+        # No hardcoded role list: editing hms_survey.xlsx's Notes cell for
+        # this row is what changes which roles unlock the section.
+        for sec_name, questions in sections_by_name.items():
+            for q in questions:
+                if q["_role"] != "PhD Advising Question":
+                    continue
+                codes = []
+                if demographics_role:
+                    matched_labels = [
+                        option_text for option_text, negated, parent_phrase in extract_clauses(q["_raw_skip"])
+                        if not negated and phrase_matches_parent(parent_phrase, demographics_role["text"])
+                    ]
+                    codes = [c for c in (find_option_code(lbl, demographics_role["options"]) for lbl in matched_labels) if c is not None]
+                if codes:
+                    q["showIf"] = {"questionId": demographics_role["qid"], "in": codes}
+                    q["group"] = q["id"]
+                else:
+                    review_notes.append((q["id"], "needs_review",
+                        "PhD Advising Question role found but its Notes text didn't resolve to a Demographics Role clause -- displays unconditionally. "
+                        "Expected grammar: '\"Label\" or \"Label\" is selected for \"<exact Demographics Role question text>\"'."))
 
         # Implicit ordering dependencies: a question that isn't a declared
         # Follow-up (no skip-logic condition on it -- it always displays)
@@ -1248,6 +1328,11 @@ def emit_question(q, review_by_qid, indent="        "):
     else:
         lines.append(f'{indent}  options: [],')
 
+    if q.get("minValue") is not None:
+        lines.append(f'{indent}  minValue: {q["minValue"]},')
+    if q.get("maxRef"):
+        lines.append(f'{indent}  maxRef: {js_string(q["maxRef"])},')
+
     if q.get("showIf"):
         lines.append(f'{indent}  showIf: {emit_show_if(q["showIf"])},')
     if q.get("group"):
@@ -1339,8 +1424,8 @@ def emit_config_js(global_name, other_label, module_order, section_order_by_modu
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    demo_module, demo_section_order, demo_review = build_demographics()
-    hms_modules, hms_review = build_hms_content()
+    demo_module, demo_section_order, demo_review, demo_age_qid, demographics_role = build_demographics()
+    hms_modules, hms_review = build_hms_content(age_qid=demo_age_qid, demographics_role=demographics_role)
     mecamh_modules, mecamh_review = build_mecamh_content()
 
     all_modules = [demo_module] + hms_modules + mecamh_modules
