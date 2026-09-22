@@ -1,3 +1,9 @@
+"""
+python manage.py export_response_times --output response_times.csv
+python manage.py export_response_times --participant 12 --output p12_response_times.csv
+python manage.py export_response_times --session-key <uuid> --output session_response_times.csv
+"""
+
 import csv
 
 from django.core.management.base import BaseCommand
