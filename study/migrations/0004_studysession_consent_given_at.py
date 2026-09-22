@@ -4,8 +4,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("study", "0003_alter_questionresponse_answer_value"),
-    ]
+    ("study", "0002_alter_activityevent_options_and_more"),
+]
 
     operations = [
         migrations.AddField(
