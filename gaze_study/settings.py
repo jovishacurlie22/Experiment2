@@ -165,6 +165,11 @@ STUDY_PARTICIPANT_COUNT = int(os.environ.get('STUDY_PARTICIPANT_COUNT', '50'))
 # Default RealEye stimulusId injected into index.html; override per-deployment.
 REALEYE_STIMULUS_ID = os.environ.get('REALEYE_STIMULUS_ID', '')
 
+# Demo account for tutorial/screen-recording purposes. Not part of the
+# 1..STUDY_PARTICIPANT_COUNT participant range and not written into any
+# real study data by convention (filtered out in analysis scripts).
+DEMO_PARTICIPANT_ID = os.environ.get('DEMO_PARTICIPANT_ID', 'demo')
+DEMO_PASSWORD = os.environ.get('DEMO_PASSWORD', 'demo123')
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration

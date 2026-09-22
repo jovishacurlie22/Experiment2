@@ -90,7 +90,10 @@ def index(request):
         {
             "stimulus_id": getattr(settings, "REALEYE_STIMULUS_ID", ""),
             "realeye_debug_mode": "true" if settings.DEBUG else "false",
-            "participant_ids": json.dumps([str(i) for i in range(1, settings.STUDY_PARTICIPANT_COUNT + 1)]),
+            "participant_ids": json.dumps(
+                [str(i) for i in range(1, settings.STUDY_PARTICIPANT_COUNT + 1)]
+                + [getattr(settings, "DEMO_PARTICIPANT_ID", "demo").upper()]
+            ),
         },
     )
 
@@ -109,8 +112,17 @@ def login_view(request):
     password = payload.get("password", "")
 
     valid_ids = {str(i) for i in range(1, settings.STUDY_PARTICIPANT_COUNT + 1)}
-    if participant_id not in valid_ids or password != settings.STUDY_PASSWORD:
+    demo_id = getattr(settings, "DEMO_PARTICIPANT_ID", "demo")
+    is_demo = (
+        participant_id.upper() == demo_id.upper()
+        and password == getattr(settings, "DEMO_PASSWORD", "demo123")
+    )
+    if not is_demo and (participant_id not in valid_ids or password != settings.STUDY_PASSWORD):
         return JsonResponse({"error": "invalid participant ID or password"}, status=401)
+
+    participant, _ = Participant.objects.get_or_create(
+        participant_code=demo_id.upper() if is_demo else participant_id
+    )
 
     participant, _ = Participant.objects.get_or_create(participant_code=participant_id)
     session = StudySession.objects.create(

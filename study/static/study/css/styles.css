@@ -142,6 +142,14 @@ a { color: var(--accent); }
   overflow: hidden;
 }
 
+/* Matrix tables are wide-but-short relative to a normal question card, so
+   centering them vertically leaves a large empty gap above the content
+   (see .question-card:has(.matrix-wrap) further down). Start those from
+   the top instead -- other question types keep the default centering. */
+.container:has(.question-card:has(.matrix-wrap)) {
+  align-items: safe start;
+}
+
 .card {
   max-height: 100%;
   overflow: hidden;
@@ -234,6 +242,24 @@ h1.study-title {
 
 .field-error.visible { display: block; }
 
+/* Consent checkbox: override .field label's block display so the checkbox
+   and its text sit on one line instead of stacking. */
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-field input[type="checkbox"] {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.checkbox-field label {
+  display: inline;
+  margin-bottom: 0;
+}
+
 /* ---------------------------------------------------------------------- */
 /* Buttons                                                                */
 /* ---------------------------------------------------------------------- */
@@ -289,7 +315,10 @@ h1.study-title {
 
 .question-meta {
   font-size: 0.8rem;
-  color: var(--muted);
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   margin: -0.6rem 0 1rem;
 }
 
@@ -777,12 +806,12 @@ h1.study-title {
 .matrix-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 1rem;           /* was 0.85rem */
+  font-size: 1.15rem;       /* was 1rem, before that 0.85rem */
 }
 
 .matrix-table thead th {
   font-weight: 600;
-  font-size: 0.92rem;        /* was 0.78rem */
+  font-size: 1.05rem;       /* was 0.92rem, before that 0.78rem */
   color: var(--muted);
   padding: 0.35rem 0.5rem;   /* was 0.4rem 0.5rem — a touch tighter */
   text-align: center;

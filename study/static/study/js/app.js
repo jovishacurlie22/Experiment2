@@ -36,25 +36,57 @@
   // give instant "unknown ID" feedback before round-tripping to the server.
   const PARTICIPANT_IDS = window.STUDY_PARTICIPANT_IDS || Array.from({ length: 30 }, (_, i) => String(i + 1));
 
-  const ALL_MODULES = window.STUDY_MODULES || [];
-  // Only used for the "up to N questions" estimate on the instructions
-  // screen — that count is order-independent, so any config will do here.
-  // The real per-participant config is picked in getActiveConfig() below,
-  // once we know whether the logged-in ID is odd or even.
-  const DEFAULT_CONFIG = window.STUDY_CONFIG_ASC || window.STUDY_CONFIG || { activeModuleIds: [] };
-  const MAX_QUESTIONS_ESTIMATE = StudyEngine.estimateMaxQuestions(ALL_MODULES, DEFAULT_CONFIG.activeModuleIds);
+  // Real schema/config (study_schema.js, study_config.js) vs. the demo
+  // schema/config (demo_study_schema.js) used only for the "DEMO" login --
+  // both are always loaded on the page (see index.html) under distinct
+  // globals so neither file has to be swapped in/out or edited.
+  const REAL_MODULES = window.STUDY_MODULES || [];
+  const DEMO_MODULES = window.DEMO_STUDY_MODULES || [];
+  const REAL_CONFIG_ASC = window.STUDY_CONFIG_ASC || window.STUDY_CONFIG || { activeModuleIds: [] };
+  const REAL_CONFIG_DESC = window.STUDY_CONFIG_DESC || REAL_CONFIG_ASC;
+  const DEMO_CONFIG_ASC = window.DEMO_STUDY_CONFIG_ASC || { activeModuleIds: [] };
+  const DEMO_CONFIG_DESC = window.DEMO_STUDY_CONFIG_DESC || DEMO_CONFIG_ASC;
 
-  // Flat id -> question lookup across every module/section, built once from
-  // the raw schema (not the branching-aware StudyEngine view, since a pipe-in
-  // source question is very often NOT the current question). Used only to
-  // resolve pipeInItems (see resolvePipeInItems below) against the source
-  // question's option list.
-  const QUESTIONS_BY_ID = new Map();
-  (ALL_MODULES || []).forEach((mod) => {
-    (mod.sections || []).forEach((sec) => {
-      (sec.questions || []).forEach((q) => QUESTIONS_BY_ID.set(q.id, q));
-    });
-  });
+  // Must match settings.DEMO_PARTICIPANT_ID server-side (views.py compares
+  // case-insensitively; the login form always uppercases what's typed --
+  // see the click handler on #btn-login below -- so "DEMO" is what
+  // state.participantId will actually hold).
+  const DEMO_PARTICIPANT_ID = "DEMO";
+
+  function isDemoParticipant() {
+    return (state.participantId || "").toUpperCase() === DEMO_PARTICIPANT_ID;
+  }
+
+  // Resolved once we know who's logged in, not at script-load time.
+  function getActiveModules() {
+    return isDemoParticipant() ? DEMO_MODULES : REAL_MODULES;
+  }
+
+  // Only used for the "up to N questions" estimate on the instructions
+  // screen — that count is order-independent, so the ASC config for
+  // whichever schema is active will do here.
+  function getMaxQuestionsEstimate() {
+    const config = isDemoParticipant() ? DEMO_CONFIG_ASC : REAL_CONFIG_ASC;
+    return StudyEngine.estimateMaxQuestions(getActiveModules(), config.activeModuleIds);
+  }
+
+  // Flat id -> question lookup across every module/section, built lazily
+  // (only once we know which schema is active) from the raw schema (not the
+  // branching-aware StudyEngine view, since a pipe-in source question is
+  // very often NOT the current question). Used only to resolve pipeInItems
+  // (see resolvePipeInItems below) against the source question's option list.
+  let _questionsById = null;
+  function getQuestionsById() {
+    if (!_questionsById) {
+      _questionsById = new Map();
+      (getActiveModules() || []).forEach((mod) => {
+        (mod.sections || []).forEach((sec) => {
+          (sec.questions || []).forEach((q) => _questionsById.set(q.id, q));
+        });
+      });
+    }
+    return _questionsById;
+  }
 
   // Resolves a matrix question's rows for "pipe-in" survey items -- i.e.
   // matrix rows that aren't fixed at schema-authoring time but are instead
@@ -71,7 +103,7 @@
   //     item) -- see resolvePipeInGroups below for the one-screen-per-
   //     option alternative to flattening these into a single big matrix.
   function resolveSelectedPipeInOptions(q) {
-    const source = QUESTIONS_BY_ID.get(q.pipeInItems.fromQuestionId);
+    const source = getQuestionsById().get(q.pipeInItems.fromQuestionId);
     const rawAnswer = state.answers[q.pipeInItems.fromQuestionId];
     const selectedValues = Array.isArray(rawAnswer) ? rawAnswer : rawAnswer != null ? [rawAnswer] : [];
     if (!source || selectedValues.length === 0) return [];
@@ -165,7 +197,10 @@
   function getActiveConfig() {
     const idNum = parseInt(state.participantId, 10);
     const isEven = Number.isFinite(idNum) && idNum % 2 === 0;
-    return (isEven ? window.STUDY_CONFIG_DESC : window.STUDY_CONFIG_ASC) || window.STUDY_CONFIG || { activeModuleIds: [] };
+    if (isDemoParticipant()) {
+      return isEven ? DEMO_CONFIG_DESC : DEMO_CONFIG_ASC;
+    }
+    return isEven ? REAL_CONFIG_DESC : REAL_CONFIG_ASC;
   }
   // Standard 9-point PAAS mental-effort scale — every point gets its own
   // explicit label (not just the two endpoints) so nothing is ambiguous.
@@ -500,7 +535,7 @@
         <p class="study-eyebrow">Welcome, ${state.participantId}</p>
         <h1 class="study-title">Before you begin</h1>
         <p class="study-lede">
-          You'll work through several short healthcare survey modules (up to ${MAX_QUESTIONS_ESTIMATE}
+                    You'll work through several short healthcare survey modules (up to ${getMaxQuestionsEstimate()}
           questions in total — some are skipped automatically based on your earlier answers).
           After each question, you'll rate how much mental effort it took to answer. The study
           must be completed in fullscreen and takes about 30 minutes. Your webcam and screen are
@@ -521,7 +556,7 @@
       // window.STUDY_CONFIG, so swap the global to the variant this
       // participant's ID selects before initializing.
       window.STUDY_CONFIG = getActiveConfig();
-      StudyEngine.init(ALL_MODULES, window.STUDY_CONFIG.activeModuleIds, (qid) => state.answers[qid]);
+            StudyEngine.init(getActiveModules(), window.STUDY_CONFIG.activeModuleIds, (qid) => state.answers[qid]);
       const hasQuestion = StudyEngine.start();
       if (!hasQuestion) {
         finishStudy("completed");
@@ -1033,10 +1068,10 @@
     const icon = early ? "⏹️" : "✅";
     const message =
       state.endReason === "manual"
-        ? "The study was ended early by the participant. Your recording has been saved."
+        ? "Your recording has been saved.Thank you for your time!"
         : state.endReason === "timeout"
-        ? "Time is up — the session has ended automatically. Your recording has been saved."
-        : "You've completed all the modules. Your recording has been saved. Thank you for participating!";
+        ? "Your recording has been saved.Thank you for your time!"
+        : "Your recording has been saved.Thank you for your time!";
 
     root.innerHTML = `
       <div class="card end-card">
