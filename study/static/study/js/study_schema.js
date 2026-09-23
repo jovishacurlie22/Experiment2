@@ -456,18 +456,6 @@ window.STUDY_MODULES = [
           showIf: { questionId: "hms-financial-stress-q6", in: ["1"] },
           group: "hms-financial-stress-q6",
         },
-        {
-          id: "hms-financial-stress-q8",
-          type: "multi",
-          stem: "Which of the following have you used to pay for educational expenses (room, board, tuition, and fees)? (Select all that apply)",
-          options: [
-            { value: "1", label: "Family resources (parents, relatives, spouse, etc.)" },
-            { value: "2", label: "Your own resources (income from work, work-study, etc.)" },
-            { value: "3", label: "Aid that need not be repaid (grants, scholarships, military, etc.)" },
-            { value: "4", label: "Aid that must be repaid (loans)" },
-            { value: "5", label: "Other sources" },
-          ],
-        },
         ]
       },
       {
@@ -536,6 +524,37 @@ window.STUDY_MODULES = [
         ]
       },
       {
+        id: "hms-financial-stress-financing-education",
+        title: "Financing education",
+        questions: [
+        {
+          id: "hms-financial-stress-q8",
+          type: "multi",
+          stem: "Which of the following have you used to pay for educational expenses (room, board, tuition, and fees)? (Select all that apply)",
+          options: [
+            { value: "1", label: "Family resources (parents, relatives, spouse, etc.)" },
+            { value: "2", label: "Your own resources (income from work, work-study, etc.)" },
+            { value: "3", label: "Aid that need not be repaid (grants, scholarships, military, etc.)" },
+            { value: "4", label: "Aid that must be repaid (loans)" },
+            { value: "5", label: "Other sources" },
+          ],
+        },
+        {
+          id: "hms-financial-stress-q9",
+          type: "nominal",
+          stem: "To what extent do you agree or disagree with the following statements? I am worried about my ability to pay for school. I am worried about my ability to repay my student loans in the future [if loans selected above] My student loans negatively impact my mental health [if loans selected above]",
+          options: [
+            { value: "1", label: "Strongly agree" },
+            { value: "2", label: "Agree" },
+            { value: "3", label: "Somewhat agree" },
+            { value: "4", label: "Somewhat disagree" },
+            { value: "5", label: "Disagree" },
+            { value: "6", label: "Strongly disagree" },
+          ],
+        },
+        ]
+      },
+      {
         id: "hms-financial-stress-scholarship-status",
         title: "Scholarship Status",
         questions: [
@@ -549,25 +568,6 @@ window.STUDY_MODULES = [
             { value: "3", label: "Yes, an academic scholarship (or merit scholarship)" },
             { value: "4", label: "Yes, an athletic scholarship" },
             { value: "5", label: "Others" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-financial-stress-financing-education",
-        title: "Financing education",
-        questions: [
-        {
-          id: "hms-financial-stress-q9",
-          type: "nominal",
-          stem: "To what extent do you agree or disagree with the following statements? I am worried about my ability to pay for school. I am worried about my ability to repay my student loans in the future [if loans selected above] My student loans negatively impact my mental health [if loans selected above]",
-          options: [
-            { value: "1", label: "Strongly agree" },
-            { value: "2", label: "Agree" },
-            { value: "3", label: "Somewhat agree" },
-            { value: "4", label: "Somewhat disagree" },
-            { value: "5", label: "Disagree" },
-            { value: "6", label: "Strongly disagree" },
           ],
         },
         ]
