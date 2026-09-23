@@ -405,6 +405,74 @@ def strip_pipe_in_bracket(text, replacement="each place you selected"):
 DIGITAL_HIDE_RE = re.compile(r"\s*\[\s*do\s+not\s+display\s+for\s+digital[^\]]*\]", re.IGNORECASE)
 DIGITAL_MODE_QUESTION_PHRASE = "how were your counseling or therapy sessions conducted"
 
+# ---------------------------------------------------------------------------
+# Per-ROW ("statement") conditional display inside an ordinary (non-piped)
+# matrix question -- e.g. Financial Stress's Financing education matrix,
+# where only 2 of 3 agree/disagree statements are loan-specific:
+#   "...I am worried about my ability to repay my student loans in the
+#   future [if loans selected above] My student loans negatively impact my
+#   mental health [if loans selected above]"
+# "above" means "the nearest question, in the same Section, whose options
+# name this concept" (here: "Aid that must be repaid (loans)" in the
+# Financing education section's pay-for-education question) -- NOT
+# necessarily the literal previous raw sheet row, since rows may already
+# have been reordered by cognitive load by the time this runs. This is
+# resolved in two passes: make_items() strips the bracket and stashes the
+# raw label ("loans") on the item as _showIfAboveLabel; once every question
+# in the module has been built (built_questions_by_id + qid_to_section are
+# both complete), resolve_item_show_if_above() below fuzzy-matches that
+# label against every OTHER question's options in the same section and
+# turns it into a proper item-level showIfWhen: {questionId, in: [code]}
+# condition for app.js (mirrors hideForDigitalWhen, but per-row and for
+# ordinary matrixItems rather than only pipe-in templates).
+# ---------------------------------------------------------------------------
+ITEM_SHOW_IF_ABOVE_RE = re.compile(
+    r"\s*\[\s*if\s+(?P<label>[^\]]+?)\s+selected\s+above\s*\]", re.IGNORECASE,
+)
+
+
+def resolve_item_show_if_above(sections_by_name, review_notes):
+    """Second pass, run once a module's sections_by_name is fully built:
+    turns each matrix item's transient _showIfAboveLabel into a real
+    showIfWhen condition by fuzzy-matching the label against the OPTIONS of
+    every OTHER question in the same section, then drops the transient
+    field either way (resolved into showIfWhen, or left showing
+    unconditionally with a needs_review note if no match was found -- same
+    fail-open stance as evalCondition's "unrecognized shape" default in
+    study_engine.js)."""
+    for sec_name, questions in sections_by_name.items():
+        for question in questions:
+            for item in question.get("matrixItems") or []:
+                label = item.pop("_showIfAboveLabel", None)
+                if not label:
+                    continue
+                best = None  # (ratio, other_qid, code)
+                for other_q in questions:
+                    if other_q is question:
+                        continue
+                    code = find_option_code(label, other_q.get("options") or [])
+                    if code is None:
+                        continue
+                    # find_option_code doesn't return the ratio it matched
+                    # at, so re-derive one just to pick the single best
+                    # candidate if more than one other question in the
+                    # section happens to have a matching option (rare, but
+                    # keeps this deterministic rather than "whichever
+                    # question comes first in the list").
+                    ratio = max(
+                        (SequenceMatcher(None, normalise(label), normalise(opt["label"])).ratio()
+                         for opt in (other_q.get("options") or []) if opt.get("code") == code),
+                        default=0.0,
+                    )
+                    if best is None or ratio > best[0]:
+                        best = (ratio, other_q["id"], code)
+                if best:
+                    item["showIfWhen"] = {"questionId": best[1], "in": [best[2]]}
+                else:
+                    review_notes.append((question["id"], "needs_review",
+                        f"matrix row '{item['label'][:60]}' had an unresolved "
+                        f"[if {label} selected above] annotation -- shows unconditionally"))
+
 
 def remote_only_codes(options):
     """Codes of options that mean remote/digital ONLY -- mentions remote,
@@ -418,16 +486,25 @@ def remote_only_codes(options):
 
 
 def make_items(qid, items, tag):
-    """Build [{id, label, hideForDigital?}] from raw split row texts,
-    stripping any "[Do not display for digital resources]" annotation from
-    the participant-facing label. Ids stay index-based on the ORIGINAL row
-    position, so hiding a row never renumbers its neighbours."""
+    """Build [{id, label, hideForDigital?, _showIfAboveLabel?}] from raw
+    split row texts, stripping any "[Do not display for digital resources]"
+    or "[if X selected above]" annotation from the participant-facing
+    label. Ids stay index-based on the ORIGINAL row position, so hiding a
+    row never renumbers its neighbours. _showIfAboveLabel is a transient
+    field -- resolved into a real showIfWhen condition (see
+    resolve_item_show_if_above below) once every question in the section
+    has been built, then dropped before emission."""
     out = []
     for i, raw in enumerate(items):
         hide = bool(DIGITAL_HIDE_RE.search(raw))
-        item = {"id": f"{qid}-{tag}{i}", "label": DIGITAL_HIDE_RE.sub("", raw).strip()}
+        label = DIGITAL_HIDE_RE.sub("", raw).strip()
+        show_if_above = ITEM_SHOW_IF_ABOVE_RE.search(label)
+        label = ITEM_SHOW_IF_ABOVE_RE.sub("", label).strip()
+        item = {"id": f"{qid}-{tag}{i}", "label": label}
         if hide:
             item["hideForDigital"] = True
+        if show_if_above:
+            item["_showIfAboveLabel"] = show_if_above.group("label").strip()
         out.append(item)
     return out
 
@@ -770,6 +847,12 @@ def build_hms_content(age_qid=None, demographics_role=None):
 
             built_questions_by_id[qid] = question
             sections_by_name[sec_name].append(question)
+
+        # Item-level (matrix row) showIfWhen resolution -- must run after
+        # every question in the module has a final built `options` list,
+        # since a row's condition can point at a question anywhere else in
+        # its own section, not just one already processed.
+        resolve_item_show_if_above(sections_by_name, review_notes)
 
         # showIf resolution, now operator-aware based on the PARENT's type.
         # id_to_qobj is built ONCE, up front -- it holds the same object
@@ -1276,6 +1359,10 @@ def emit_show_if(cond):
 
 def emit_item(item):
     extra = ", hideForDigital: true" if item.get("hideForDigital") else ""
+    if item.get("showIfWhen"):
+        siw = item["showIfWhen"]
+        codes = ", ".join(js_string(c) for c in siw["in"])
+        extra += f', showIfWhen: {{ questionId: {js_string(siw["questionId"])}, in: [{codes}] }}'
     return f'{{ id: {js_string(item["id"])}, label: {js_string(item["label"])}{extra} }}'
 
 

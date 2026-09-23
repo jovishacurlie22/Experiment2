@@ -629,7 +629,7 @@ window.STUDY_MODULES = [
         {
           id: "hms-academic-persistence-retention-and-competition-q10",
           type: "nominal",
-          stem: "How has it been to adjust to the academic demands of [college/graduate school] since you began as a student at your school?",
+          stem: "How has it been to adjust to the academic demands of college since you began as a student at your school?",
           options: [
             { value: "1", label: "Very easy" },
             { value: "2", label: "Easy" },
@@ -692,18 +692,6 @@ window.STUDY_MODULES = [
         title: "Perceived competition",
         questions: [
         {
-          id: "hms-academic-persistence-retention-and-competition-q3",
-          type: "nominal",
-          stem: "How frequently do instructors in your major/field of study grade your work on a curve (adjust grades based on the grade distribution among students in a class)?",
-          options: [
-            { value: "1", label: "Never" },
-            { value: "2", label: "Almost never" },
-            { value: "3", label: "Occasionally/sometimes" },
-            { value: "4", label: "Almost every time" },
-            { value: "5", label: "Every time" },
-          ],
-        },
-        {
           id: "hms-academic-persistence-retention-and-competition-q2",
           type: "matrix",
           stem: "How would you rate the overall competitiveness among students",
@@ -720,23 +708,16 @@ window.STUDY_MODULES = [
             { value: "5", label: "Very uncompetitive" },
           ],
         },
-        ]
-      },
-      {
-        id: "hms-academic-persistence-retention-and-competition-overall-social-experience",
-        title: "Overall social experience",
-        questions: [
         {
-          id: "hms-academic-persistence-retention-and-competition-q14",
+          id: "hms-academic-persistence-retention-and-competition-q3",
           type: "nominal",
-          stem: "How has it been to… …develop close friendships with other students at your school? …manage your time effectively since you began as a student at your school?",
+          stem: "How often do professors or external examiners in your course/department use relative grading (scaling or adjusting marks based on the overall performance of the class rather than using fixed passing marks)?",
           options: [
-            { value: "1", label: "Very easy" },
-            { value: "2", label: "Easy" },
-            { value: "3", label: "Somewhat easy" },
-            { value: "4", label: "Somewhat difficult" },
-            { value: "5", label: "Difficult" },
-            { value: "6", label: "Very difficult" },
+            { value: "1", label: "Never" },
+            { value: "2", label: "Almost never" },
+            { value: "3", label: "Occasionally/sometimes" },
+            { value: "4", label: "Almost every time" },
+            { value: "5", label: "Every time" },
           ],
         },
         ]
@@ -786,6 +767,29 @@ window.STUDY_MODULES = [
             { value: "3", label: "Neither agree nor disagree" },
             { value: "4", label: "Agree" },
             { value: "5", label: "Strongly agree" },
+          ],
+        },
+        ]
+      },
+      {
+        id: "hms-academic-persistence-retention-and-competition-overall-social-experience",
+        title: "Overall social experience",
+        questions: [
+        {
+          id: "hms-academic-persistence-retention-and-competition-q14",
+          type: "matrix",
+          stem: "How has it been to",
+          items: [
+            { id: "hms-academic-persistence-retention-and-competition-q14-i0", label: "develop close friendships with other students at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q14-i1", label: "manage your time effectively since you began as a student at your school?" },
+          ],
+          options: [
+            { value: "1", label: "Very easy" },
+            { value: "2", label: "Easy" },
+            { value: "3", label: "Somewhat easy" },
+            { value: "4", label: "Somewhat difficult" },
+            { value: "5", label: "Difficult" },
+            { value: "6", label: "Very difficult" },
           ],
         },
         ]
@@ -1001,8 +1005,8 @@ window.STUDY_MODULES = [
             { id: "hms-mental-health-status-q10-i1", label: "Have you ever felt that someone was playing with your mind?" },
           ],
           options: [
-            { value: "0", label: "No" },
             { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
           ],
         },
         ]
@@ -1616,12 +1620,12 @@ window.STUDY_MODULES = [
           type: "multi",
           stem: "In the past 12 months have you taken any of the following types of prescription medications? (Please count only those you took, or are taking, several times per week.) (Select all that apply)",
           options: [
-            { value: "1", label: "Psychostimulants (methylphenidate (Ritalin or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
-            { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
-            { value: "3", label: "Antipsychotics (e.g., haloperidol (Haldol), clozapine (Clozaril), risperidone (Risperdal), olanzapine (Zyprexas), etc.)" },
-            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.)" },
-            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate (Depakote), lamotrigine (Lamictal), carbamazepine (Tegretol), etc.)" },
-            { value: "6", label: "Sleep medications (e.g., zolpidem (Ambien), zaleplon (Sonata), etc.)" },
+            { value: "1", label: "Psychostimulants (methylphenidate, amphetamine salts), dextroamphetamine, etc.)" },
+            { value: "2", label: "Antidepressants (e.g., fluoxetin,sertraline,paroxetine,escitalopra,venlafaxine,bupropion, etc.)" },
+            { value: "3", label: "Antipsychotics (e.g., haloperidol,clozapine,risperidone,olanzapine,etc.)" },
+            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam,clonazepam,alprazolam,buspirone,etc.)" },
+            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate,lamotrigine,carbamazepine,etc.)" },
+            { value: "6", label: "Sleep medications (e.g., zolpidem,zaleplon,etc.)" },
             { value: "7", label: "Others" },
             { value: "8", label: "No, none of these", exclusive: true },
             { value: "9", label: "Don’t know" },
@@ -1688,14 +1692,15 @@ window.STUDY_MODULES = [
           type: "multi",
           stem: "Of the medication(s) you just noted, which are you currently taking? (Select all that apply)",
           options: [
-            { value: "1", label: "Psychostimulants (methylphenidate (Ritalin, or Concerta), amphetamine salts (Adderall), dextroamphetamine (Dexedrine), etc.)" },
-            { value: "2", label: "Antidepressants (e.g., fluoxetine (Prozac), sertraline (Zoloft), paroxetine (Paxil), escitalopram (Lexapro), venlafaxine (Effexor), bupropion (Wellbutrin), etc.)" },
-            { value: "3", label: "Antipsychotics (e.g., haloperidol (Haldol), clozapine (Clozaril), risperidone (Risperdal), olanzapine (Zyprexas), etc.)" },
-            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam (Ativan), clonazepam (Klonopin), alprazolam (Xanax), buspirone (Bu Spar), etc.)" },
-            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate (Depakote), lamotrigine (Lamictal), carbamazepine (Tegretol), etc.)" },
-            { value: "6", label: "Sleep medications (e.g., zolpidem (Ambien), zaleplon (Sonata), etc.)" },
-            { value: "7", label: "Other medication for mental or emotional health" },
-            { value: "8", label: "None of the above", exclusive: true },
+            { value: "1", label: "Psychostimulants (methylphenidate, amphetamine salts), dextroamphetamine, etc.)" },
+            { value: "2", label: "Antidepressants (e.g., fluoxetin,sertraline,paroxetine,escitalopra,venlafaxine,bupropion, etc.)" },
+            { value: "3", label: "Antipsychotics (e.g., haloperidol,clozapine,risperidone,olanzapine,etc.)" },
+            { value: "4", label: "Anti-anxiety medications (e.g., lorazepam,clonazepam,alprazolam,buspirone,etc.)" },
+            { value: "5", label: "Mood stabilizers (e.g., lithium, valproate,lamotrigine,carbamazepine,etc.)" },
+            { value: "6", label: "Sleep medications (e.g., zolpidem,zaleplon,etc.)" },
+            { value: "7", label: "Others" },
+            { value: "8", label: "No, none of these", exclusive: true },
+            { value: "9", label: "Don’t know" },
           ],
           showIf: { questionId: "hms-mental-health-service-utilization-q31", excludesAny: ["8"] },
           group: "hms-mental-health-service-utilization-q31",

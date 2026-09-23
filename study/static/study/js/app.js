@@ -151,13 +151,37 @@
     return q.pipeInItems.template.filter((tmpl) => !(tmpl.hideForDigital && digital));
   }
 
-  // Falls back to q.items (or []) for ordinary, non-piped matrix questions.
+  // Whether one ordinary (non-piped) matrix row should currently be shown.
+  // item.showIfWhen: { questionId, in: [...] } -- shown only once the
+  // named question's own answer includes one of the given option codes.
+  // The named question is typically a multi-select earlier in the same
+  // section (e.g. Financing education's "how did you pay for school"
+  // question), so its stored answer is an array of selected codes; a
+  // single-value answer is normalized into a one-element array so the
+  // same check works either way. No showIfWhen -> always shown. This is
+  // the item-level counterpart to StudyEngine's question-level showIf --
+  // a whole matrix question can have some always-shown rows alongside
+  // rows conditional on an earlier answer (see the loan-repayment worry
+  // statements, which only apply if loans were selected as a funding
+  // source above them).
+  function itemVisible(item) {
+    const cond = item.showIfWhen;
+    if (!cond) return true;
+    const val = state.answers[cond.questionId];
+    if (val === undefined || val === null) return false;
+    const arr = Array.isArray(val) ? val : [val];
+    return cond.in.some((code) => arr.includes(code));
+  }
+
+  // Falls back to q.items (or []) for ordinary, non-piped matrix questions,
+  // filtered by itemVisible() so a conditional row (showIfWhen) never
+  // renders, blocks "Next", or gets stored until its condition is met.
   // For a template pipe-in, this is the flattened "one big matrix" shape
   // (rows labeled "<aspect> — <place>") -- see resolvePipeInGroups for the
   // one-screen-per-place alternative, which is what renderQuestion() below
   // actually uses for template pipe-ins now.
   function resolvePipeInItems(q) {
-    if (!q.pipeInItems) return q.items || [];
+    if (!q.pipeInItems) return (q.items || []).filter(itemVisible);
     const selectedOptions = resolveSelectedPipeInOptions(q);
 
     if (!q.pipeInItems.template) {

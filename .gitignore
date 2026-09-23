@@ -5,3 +5,7 @@ media/
 .venv/
 __pycache__/
 *.pyc
+1-logs.csv
+2-logs.csv
+response_times.csv
+response_times.csv
