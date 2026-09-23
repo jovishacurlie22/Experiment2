@@ -647,10 +647,10 @@ window.STUDY_MODULES = [
         {
           id: "hms-academic-persistence-retention-and-competition-q11",
           type: "matrix",
-          stem: "Have you",
+          stem: "Have you…",
           items: [
-            { id: "hms-academic-persistence-retention-and-competition-q11-i0", label: "decided to pursue a different major since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-and-competition-q11-i1", label: "failed one or more courses since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q11-i0", label: "…decided to pursue a different major since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q11-i1", label: "…failed one or more courses since you began as a student at your school?" },
           ],
           options: [
             { value: "1", label: "Yes" },
@@ -659,8 +659,13 @@ window.STUDY_MODULES = [
         },
         {
           id: "hms-academic-persistence-retention-and-competition-q9",
-          type: "nominal",
-          stem: "How much do you agree with the following statements? I have doubts about whether higher education is worth the time, money, and effort that I’m spending on it. My family is very supportive of my educational goals. My professors believe in my potential to succeed academically.",
+          type: "matrix",
+          stem: "How much do you agree with the following statements?",
+          items: [
+            { id: "hms-academic-persistence-retention-and-competition-q9-i0", label: "I have doubts about whether higher education is worth the time, money, and effort that I’m spending on it." },
+            { id: "hms-academic-persistence-retention-and-competition-q9-i1", label: "My family is very supportive of my educational goals." },
+            { id: "hms-academic-persistence-retention-and-competition-q9-i2", label: "My professors believe in my potential to succeed academically." },
+          ],
           options: [
             { value: "1", label: "Strongly agree" },
             { value: "2", label: "Agree" },
@@ -699,11 +704,11 @@ window.STUDY_MODULES = [
         {
           id: "hms-academic-persistence-retention-and-competition-q2",
           type: "matrix",
-          stem: "How would you rate the overall competitiveness among students",
+          stem: "How would you rate the overall competitiveness among students…",
           items: [
-            { id: "hms-academic-persistence-retention-and-competition-q2-i0", label: "in your current classes?" },
-            { id: "hms-academic-persistence-retention-and-competition-q2-i1", label: "at your school?" },
-            { id: "hms-academic-persistence-retention-and-competition-q2-i2", label: "in your field of study?" },
+            { id: "hms-academic-persistence-retention-and-competition-q2-i0", label: "…in your current classes?" },
+            { id: "hms-academic-persistence-retention-and-competition-q2-i1", label: "…at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q2-i2", label: "…in your field of study?" },
           ],
           options: [
             { value: "1", label: "Very competitive" },
@@ -783,10 +788,10 @@ window.STUDY_MODULES = [
         {
           id: "hms-academic-persistence-retention-and-competition-q14",
           type: "matrix",
-          stem: "How has it been to",
+          stem: "How has it been to…",
           items: [
-            { id: "hms-academic-persistence-retention-and-competition-q14-i0", label: "develop close friendships with other students at your school?" },
-            { id: "hms-academic-persistence-retention-and-competition-q14-i1", label: "manage your time effectively since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q14-i0", label: "…develop close friendships with other students at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q14-i1", label: "…manage your time effectively since you began as a student at your school?" },
           ],
           options: [
             { value: "1", label: "Very easy" },
@@ -830,13 +835,13 @@ window.STUDY_MODULES = [
         {
           id: "hms-academic-persistence-retention-and-competition-q12",
           type: "matrix",
-          stem: "How often have you",
+          stem: "How often have you…",
           items: [
-            { id: "hms-academic-persistence-retention-and-competition-q12-i0", label: "utilized academic support services (e.g., a writing center, tutor, etc.) since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-and-competition-q12-i1", label: "interacted with faculty during office hours since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-and-competition-q12-i2", label: "interacted with faculty outside of class or office hours (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-and-competition-q12-i3", label: "interacted with academic advisors/counselors (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
-            { id: "hms-academic-persistence-retention-and-competition-q12-i4", label: "interacted with graduate students/teaching assistants (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i0", label: "…utilized academic support services (e.g., a writing center, tutor, etc.) since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i1", label: "…interacted with faculty during office hours since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i2", label: "…interacted with faculty outside of class or office hours (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i3", label: "…interacted with academic advisors/counselors (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
+            { id: "hms-academic-persistence-retention-and-competition-q12-i4", label: "…interacted with graduate students/teaching assistants (e.g., by phone, email, text, or in person) since you began as a student at your school?" },
           ],
           options: [
             { value: "1", label: "Everyday or nearly everyday" },
@@ -1252,10 +1257,10 @@ window.STUDY_MODULES = [
         {
           id: "hms-mental-health-status-q13",
           type: "matrix",
-          stem: "In the past year, did you",
+          stem: "In the past year, did you…",
           items: [
-            { id: "hms-mental-health-status-q13-i0", label: "make a plan for attempting suicide?" },
-            { id: "hms-mental-health-status-q13-i1", label: "attempt suicide?" },
+            { id: "hms-mental-health-status-q13-i0", label: "…make a plan for attempting suicide?" },
+            { id: "hms-mental-health-status-q13-i1", label: "…attempt suicide?" },
           ],
           options: [
             { value: "1", label: "Yes" },

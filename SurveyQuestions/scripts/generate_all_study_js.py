@@ -189,11 +189,21 @@ def split_matrix_stem_and_items(question_text):
         stem = text[:first_num_pos.start()].strip() if first_num_pos else ""
         return stem, [item for _num, item in numbered_lines]
 
-    # Pattern 2: ellipsis-separated bundle -- first part is the intro.
+    # Pattern 2: ellipsis-separated bundle -- the ellipsis is part of
+    # deliberately-correct source text (HMS's way of marking "every item
+    # continues this same lead-in", e.g. "How would you rate the overall
+    # competitiveness among students… …in your current classes? …at your
+    # school?"). Splitting on it and then discarding it (as this used to
+    # do) left the stem reading as a broken fragment with no trailing
+    # punctuation ("...students") and every item reading as a broken
+    # fragment starting mid-sentence, lower-case ("in your current
+    # classes?") -- re-attached here instead: "…" appended to the stem,
+    # "…" prepended to every item, so both read as the intentional
+    # continuation they are.
     ellipsis_parts = re.split(r"[\u2026]+|\.\.\.+", text)
     ellipsis_parts = [p.strip(" .") for p in ellipsis_parts if p.strip(" .")]
     if len(ellipsis_parts) >= 3:
-        return ellipsis_parts[0], ellipsis_parts[1:]
+        return ellipsis_parts[0] + "…", ["…" + p for p in ellipsis_parts[1:]]
 
     # Pattern 3: intro clause ending in "?" or ":" followed by bundled
     # sentences (e.g. "...following: How often...? How often...?").
@@ -212,7 +222,26 @@ def split_matrix_stem_and_items(question_text):
         # bracketed annotation (e.g. "Location [Do not display for digital
         # resources]") was being fused onto the next row's text, since a
         # closing bracket wasn't a recognized row-ending character.
-        parts = re.split(r"(?<=[a-z\)\.\?\]])\s+(?=[A-Z])", remainder)
+        #
+        # Split into two alternatives rather than one combined character
+        # class (found via Academic Persistence Q10's "...the time, money,
+        # and effort that I'm spending on it. My family..." wrongly
+        # snapping a bogus row at "that | I'm"): a bare lowercase letter
+        # (no real sentence-ending punctuation before it) is only a
+        # genuine row boundary if what follows ISN'T the standalone
+        # pronoun "I"/"I'm"/"I've"/"I'll"/"I'd" -- English's one common
+        # capitalized word that turns up mid-sentence, not just at a
+        # sentence's start. A row boundary preceded by REAL terminal
+        # punctuation (. ? ) ]) has no such ambiguity and still splits on
+        # any capital letter, "I" included -- this is what correctly
+        # separates Financing Education's "...for school. I am worried
+        # about my ability to repay..." into two rows.
+        NOT_BARE_I = r"(?!I(?:['\u2019](?:m|ve|ll|d))?(?=[\s.,;:!?]|$))"
+        parts = re.split(
+            r"(?:(?<=[\)\.\?\]])\s+(?=[A-Z]))"
+            r"|(?:(?<=[a-z])\s+(?=[A-Z])" + NOT_BARE_I + r")",
+            remainder,
+        )
         parts = [p.strip() for p in parts if p.strip()]
         if len(parts) >= 2:
             stem, parts = _strip_boilerplate_lead(stem_match.group(1), parts)
