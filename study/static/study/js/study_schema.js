@@ -541,8 +541,13 @@ window.STUDY_MODULES = [
         },
         {
           id: "hms-financial-stress-q9",
-          type: "nominal",
-          stem: "To what extent do you agree or disagree with the following statements? I am worried about my ability to pay for school. I am worried about my ability to repay my student loans in the future [if loans selected above] My student loans negatively impact my mental health [if loans selected above]",
+          type: "matrix",
+          stem: "To what extent do you agree or disagree with the following statements?",
+          items: [
+            { id: "hms-financial-stress-q9-i0", label: "I am worried about my ability to pay for school." },
+            { id: "hms-financial-stress-q9-i1", label: "I am worried about my ability to repay my student loans in the future", showIfWhen: { questionId: "hms-financial-stress-q8", in: ["4"] } },
+            { id: "hms-financial-stress-q9-i2", label: "My student loans negatively impact my mental health", showIfWhen: { questionId: "hms-financial-stress-q8", in: ["4"] } },
+          ],
           options: [
             { value: "1", label: "Strongly agree" },
             { value: "2", label: "Agree" },
@@ -1005,8 +1010,8 @@ window.STUDY_MODULES = [
             { id: "hms-mental-health-status-q10-i1", label: "Have you ever felt that someone was playing with your mind?" },
           ],
           options: [
-            { value: "1", label: "Yes" },
             { value: "0", label: "No" },
+            { value: "1", label: "Yes" },
           ],
         },
         ]
