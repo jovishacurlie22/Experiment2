@@ -1,5 +1,15 @@
 /* ==========================================================================
    capture_session.js (WebCodecs raw elementary stream implementation)
+
+   Epoch anchoring: frame.timestamp (used throughout as timestamp_us) is a
+   relative, high-resolution clock with no fixed real-world origin -- it
+   cannot be compared to a unix timestamp on its own. On each stream's very
+   first captured frame, we record one pairing -- anchor_epoch_ms (real unix
+   time, from Date.now()) alongside anchor_timestamp_us (that same frame's
+   timestamp_us) -- and carry it in every sidecar payload this file sends.
+   That one pairing is what lets a later alignment step convert any frame's
+   timestamp_us into a real unix time:
+     abs_epoch_us = anchor_epoch_ms * 1000 + (timestamp_us - anchor_timestamp_us)
    ========================================================================== */
 
 const CaptureSession = (() => {
@@ -44,6 +54,15 @@ const CaptureSession = (() => {
       totalFrameCount: 0,
       firstTimestampUs: null,
       lastTimestampUs: null,
+
+      // Epoch anchor: the one fact that ties this stream's frame.timestamp
+      // values (a relative, high-res clock with no fixed origin) onto the
+      // real unix timeline that ActivityEvent/QuestionResponse use. Set once,
+      // on the first frame actually pulled off the track (see startPipeline).
+      // Downstream, any frame's absolute unix time is recoverable as:
+      //   abs_epoch_us = anchorEpochMs * 1000 + (frame.timestamp_us - anchorTimestampUs)
+      anchorEpochMs: null,
+      anchorTimestampUs: null,
     };
   }
 
@@ -181,7 +200,12 @@ const CaptureSession = (() => {
             pipeline.firstFrameLogged = true;
             // True capture-pipeline start: the first frame actually pulled
             // off the track, not the moment we asked for the stream.
-            logActivityEvent('recording_start', trackType);
+            // logActivityEvent() returns the exact Date.now() it just used,
+            // so reuse that value (rather than calling Date.now() again) as
+            // the epoch anchor -- it and frame.timestamp below are read as
+            // close together as the code allows, minimizing anchor error.
+            pipeline.anchorEpochMs = logActivityEvent('recording_start', trackType);
+            pipeline.anchorTimestampUs = frame.timestamp;
           }
 
           const idx = pipeline.frameIndex++;
@@ -255,6 +279,10 @@ const CaptureSession = (() => {
         chunk_index: chunkIndex,
         is_final: !!isFinal,
         frame_count: sidecarToSend.length,
+        // Included on every chunk (not just the first) so the anchor
+        // survives even if an early chunk is lost or arrives out of order.
+        anchor_epoch_ms: pipeline.anchorEpochMs,
+        anchor_timestamp_us: pipeline.anchorTimestampUs,
         frames: sidecarToSend,
       };
 
@@ -304,6 +332,8 @@ const CaptureSession = (() => {
           target_fps: pipeline.targetFps,
           avg_fps: avgFps,
           frame_count: pipeline.totalFrameCount,
+          anchor_epoch_ms: pipeline.anchorEpochMs,
+          anchor_timestamp_us: pipeline.anchorTimestampUs,
         },
       };
     }
@@ -322,6 +352,8 @@ const CaptureSession = (() => {
       target_fps: pipeline.targetFps,
       avg_fps: avgFps,
       frame_count: frameCount,
+      anchor_epoch_ms: pipeline.anchorEpochMs,
+      anchor_timestamp_us: pipeline.anchorTimestampUs,
       frames: pipeline.sidecar,
     };
 
