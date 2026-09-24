@@ -111,6 +111,27 @@ class ActivityEvent(models.Model):
         ("screen_shown", "Screen Shown"),
         ("server_hit", "Server Hit"),
         ("consent_given", "Consent Given"),
+        # --- previously collapsed into "other" or never sent ---
+        ("fullscreen_entered", "Fullscreen Entered"),
+        ("fullscreen_exited", "Fullscreen Exited"),
+        ("webcam_recording_stopped", "Webcam Recording Stopped"),
+        ("screen_recording_stopped", "Screen Recording Stopped"),
+        # --- interaction events ---
+        ("click", "Click"),
+        ("text_input", "Text Input"),
+        ("matrix_page_next", "Matrix Page Next"),
+        ("rating_selected", "PaaS Rating Selected"),
+        ("end_study_opened", "End-Study Modal Opened"),
+        ("end_study_cancelled", "End-Study Cancelled"),
+        ("end_study_confirmed", "End-Study Confirmed"),
+        ("back_attempt", "Back Button Attempt"),
+        ("tab_hidden", "Tab Hidden"),
+        ("tab_visible", "Tab Visible"),
+        ("window_blur", "Window Blur"),
+        ("window_focus", "Window Focus"),
+        ("clipboard", "Copy/Paste/Cut"),
+        ("context_menu", "Right Click"),
+        ("page_hide", "Page Hide"),
         ("other", "Other"),
     ]
 
@@ -135,6 +156,16 @@ class ActivityEvent(models.Model):
 
     class Meta:
         ordering = ["session_key", "epoch_ms"]
+
+    def save(self, *args, **kwargs):
+        # Fill participant / session_key from the session on every creation
+        # path, so exports filtering by participant never drop events.
+        if self.session_id:
+            if self.participant_id is None:
+                self.participant_id = self.session.participant_id
+            if not self.session_key:
+                self.session_key = str(self.session.session_key)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.session_key} | {self.event_type} @ {self.epoch_ms}"

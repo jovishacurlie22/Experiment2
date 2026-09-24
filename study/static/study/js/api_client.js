@@ -94,7 +94,7 @@ window.StudyAPI = (() => {
     },
 
     // POST /api/submit-response/  -> { ok, response_id }
-    submitResponse(sessionKey, { moduleId, sectionId, questionId, answerValue, effortRating, presentedAt, answeredAt }) {
+    submitResponse(sessionKey, { moduleId, sectionId, questionId, answerValue, effortRating, presentedAt, answeredAt, presentedEpochMs, answeredEpochMs }) {
       return postJSON("/api/submit-response/", {
         session_key: sessionKey,
         module_id: moduleId,
@@ -103,7 +103,9 @@ window.StudyAPI = (() => {
         answer_value: answerValue,
         effort_rating: effortRating,
         presented_at: presentedAt,
-        answered_at: answeredAt
+        answered_at: answeredAt,
+        presented_epoch_ms: presentedEpochMs,
+        answered_epoch_ms: answeredEpochMs
       });
     },
 

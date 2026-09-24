@@ -247,6 +247,8 @@
     sessionKey: null, // set on successful server-side login (StudySession.session_key)
     answers: {},   // qid -> option value
     answerLastChangedAt: {}, // qid -> ISO timestamp of the most recent change to that answer
+    answerSubmittedAtMs: {},     // qid -> epoch ms of the click on the question screen's Next button
+    questionPresentedAtMs: null, // epoch ms: when the current question screen appeared
     effort: {},    // qid -> paas rating 1-9
     currentModuleId: null, // last module id a module-intro screen was shown for
     questionPresentedAt: null, // ISO timestamp: when the current question screen appeared
@@ -330,12 +332,64 @@
   document.addEventListener("webkitfullscreenchange", logFullscreenChange);
 
   /* ---------------------------------------------------------------- */
+  /* Generic UI-interaction logging (one row per event)                */
+  /* ---------------------------------------------------------------- */
+
+  function logUI(eventType, detail) {
+    if (!state.sessionKey) return;
+    StudyAPI.logEvent(state.sessionKey, eventType, {
+      screenName: state.screen,
+      detail: detail || {}
+    });
+  }
+
+  document.addEventListener("visibilitychange", () =>
+    logUI(document.hidden ? "tab_hidden" : "tab_visible"));
+  window.addEventListener("blur", () => logUI("window_blur"));
+  window.addEventListener("focus", () => logUI("window_focus"));
+  document.addEventListener("contextmenu", () => logUI("context_menu"));
+  ["copy", "paste", "cut"].forEach((action) =>
+    document.addEventListener(action, () => logUI("clipboard", { action })));
+
+  // Every click on a button/input/select/link (radio labels fire a click on
+  // their input, so choices are covered too). Password values are never sent.
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest("button, input, select, a");
+    if (!el) return;
+    logUI("click", {
+      tag: el.tagName.toLowerCase(),
+      id: el.id || "",
+      name: el.name || "",
+      value: el.type === "password" ? "" : (el.value || ""),
+      text: (el.innerText || "").trim().slice(0, 60)
+    });
+  }, true);
+
+  // Text/numeric answers: one event ~800 ms after the last keystroke, with
+  // the last keystroke's own time in detail.lastKeystrokeAt.
+  let textLogTimer = null;
+  function logTextInput(q, ctx, value) {
+    clearTimeout(textLogTimer);
+    const lastKeystrokeAt = StudyAPI.nowIso();
+    textLogTimer = setTimeout(() => {
+      StudyAPI.logEvent(state.sessionKey, "text_input", {
+        screenName: "question",
+        detail: {
+          moduleId: ctx.module.id, sectionId: ctx.section.id,
+          questionId: q.id, value, lastKeystrokeAt
+        }
+      });
+    }, 800);
+  }
+
+  /* ---------------------------------------------------------------- */
   /* Back-navigation trap                                              */
   /* ---------------------------------------------------------------- */
 
   let backTrapActive = false;
 
   function trapPopState() {
+    logUI("back_attempt");
     // Immediately re-push forward so the URL/history position never
     // actually moves backward while the trap is active.
     history.pushState({ studyTrap: true }, "", location.href);
@@ -375,6 +429,7 @@
   // during recording (see onSegment in capture_session.js), so at most the
   // final in-progress segment is at risk, not the whole recording.
   window.addEventListener("pagehide", () => {
+    logUI("page_hide");
     if (isSessionActive()) {
       CaptureSession.stop();
     }
@@ -839,7 +894,9 @@
       finishStudy("completed");
       return;
     }
-    state.questionPresentedAt = StudyAPI.nowIso();
+    const presentedMs = Date.now();
+    state.questionPresentedAtMs = presentedMs;
+    state.questionPresentedAt = new Date(presentedMs).toISOString();
     const groupBadge = q.group ? `<span class="group-badge">Follow-up</span>` : "";
 
     // Matrix questions that don't fit on one screen even after
@@ -953,6 +1010,7 @@
         input.addEventListener("input", () => {
           state.answers[q.id] = input.value;
           recordAnswerChange(q, ctx, input.value, { logIt: false });
+          logTextInput(q, ctx, input.value);
           nextBtn.disabled = input.value.trim() === "";
         });
       } else if (q.type === "dropdown") {
@@ -1002,12 +1060,16 @@
           // page and re-render, but don't touch the engine cursor or go
           // to the effort-rating screen yet; that only happens once the
           // last chunk's rows are answered too.
+          logUI("matrix_page_next", { questionId: q.id, fromPage: matrixPage.index, toPage: matrixPage.index + 1 });
           matrixPage = { ...matrixPage, index: matrixPage.index + 1, start: matrixPage.start + matrixPage.size };
           renderCard();
           bindInputs();
           requestAnimationFrame(() => fitCardToViewport(".question-card"));
           return;
         }
+        // The participant's final "Next" on this question: this is the
+        // answer-submitted time. Stamped here, before the rating screen.
+        state.answerSubmittedAtMs[q.id] = Date.now();
         goTo("rating");
       });
     }
@@ -1059,6 +1121,7 @@
     const nextBtn = document.getElementById("btn-rating-next");
     document.querySelectorAll('input[name="effort"]').forEach((input) => {
       input.addEventListener("change", () => {
+        logUI("rating_selected", { questionId: q.id, value: input.value });
         nextBtn.disabled = false;
       });
     });
@@ -1073,6 +1136,8 @@
             const rawAnswer = state.answers[q.id];
       const serializedAnswer = typeof rawAnswer === "string" ? rawAnswer : JSON.stringify(rawAnswer);
 
+      const answeredMs = state.answerSubmittedAtMs[q.id] || state.questionPresentedAtMs;
+
       StudyAPI.submitResponse(state.sessionKey, {
         moduleId: ctx.module.id,
         sectionId: ctx.section.id,
@@ -1080,11 +1145,12 @@
         answerValue: serializedAnswer,
         effortRating: state.effort[q.id],
         presentedAt: state.questionPresentedAt,
-        // The moment the answer itself was last changed -- not now, which
-        // would also count time spent on this (the effort-rating) screen.
-        // Falls back to questionPresentedAt in the unexpected case no
-        // change was ever recorded.
-        answeredAt: state.answerLastChangedAt[q.id] || state.questionPresentedAt
+        // The moment "Next" was clicked on the question screen -- not the
+        // last answer change, and not anything on this rating screen.
+        answeredAt: new Date(answeredMs).toISOString(),
+        // Exact integer epoch ms, captured at the moment of the events:
+        presentedEpochMs: state.questionPresentedAtMs,
+        answeredEpochMs: answeredMs
       }).catch((err) => console.error("[app] Failed to submit response:", err));
 
       const hasNext = StudyEngine.next();
@@ -1191,14 +1257,17 @@
   /* ---------------------------------------------------------------- */
 
   endStudyBtn.addEventListener("click", () => {
+    logUI("end_study_opened");
     modalBackdrop.classList.add("visible");
   });
 
   document.getElementById("modal-cancel").addEventListener("click", () => {
+    logUI("end_study_cancelled");
     modalBackdrop.classList.remove("visible");
   });
 
   document.getElementById("modal-confirm-end").addEventListener("click", () => {
+    logUI("end_study_confirmed");
     modalBackdrop.classList.remove("visible");
     finishStudy("manual");
   });
