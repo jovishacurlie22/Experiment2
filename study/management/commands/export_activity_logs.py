@@ -17,47 +17,66 @@ Output:
 
 Row sources, merged and sorted by unix_ms (the row's PRIMARY timestamp --
 see each source below for which instant that is):
-    1. Every ActivityEvent row (session_started, consent_given,
-       screen_shown, fullscreen_entered/exited, recording_start/stop,
-       webcam_recording_stopped, screen_recording_stopped, session_ended,
-       server_hit, other...), EXCEPT "question_answered" on a matrix
-       question -- see (1b).
+    1. Every ActivityEvent row, EXCEPT "question_answered" on a matrix
+       question -- see (1b). That includes:
+         lifecycle    session_started, consent_given, session_ended
+         screens      screen_shown (question / rating / moduleIntro / ...)
+         answers      question_answered, text_input (debounced, with
+                      detail.lastKeystrokeAt), matrix_page_next,
+                      rating_selected (PaaS value clicked)
+         interaction  click (button/input/select/link, with id/name/value),
+                      clipboard (copy/paste/cut), context_menu, back_attempt,
+                      end_study_opened / end_study_cancelled /
+                      end_study_confirmed
+         attention    tab_hidden / tab_visible, window_blur / window_focus,
+                      fullscreen_entered / fullscreen_exited, page_hide
+         recording    recording_start / recording_stop,
+                      webcam_recording_stopped / screen_recording_stopped
+         other        server_hit, other
+       Sessions recorded before the interaction events were added contain
+       only the older types; fullscreen changes from that period were stored
+       as "other" and can't be told apart.
     1b. Matrix row clicks: app.js fires a "question_answered" ActivityEvent
-        on every row click, but each event's logged value is the FULL
-        cumulative answer object so far (every row answered up to that
-        point), not just the row just clicked. Each event here is diffed
-        against the previous click for that same question (per session)
-        so only the row(s) that actually changed on THIS click are
+        on every row click. Its `value` is the FULL cumulative answer object
+        so far, but the event also carries detail.itemId / itemValue naming
+        the row just clicked, which is used directly (events without them
+        fall back to diffing against the previous click for that question).
+        Only the row that actually changed on THIS click is
         emitted -- one CSV row per matrix row, carrying that click's own
         timestamp, event_type "matrix_row_answered", and the item_id
         column identifying which row it was.
     2. ONE row per QuestionResponse -- not two. Its primary timestamp
-       (unix_ms / datetime_utc) is the ANSWERED instant (answered_epoch_ms),
+       (unix_ms) is the ANSWERED instant (answered_epoch_ms),
        since that's the moment worth sorting a question's row by. The
        earlier PRESENTED instant is kept too, in presented_unix_ms /
-       presented_datetime_utc, on that SAME row, so nothing needs a
+       on that SAME row, so nothing needs a
        separate near-empty placeholder row -- module_id, section_id,
        question_id, answer_value and effort_rating are always populated
        together on this one row.
 
-       answered_epoch_ms itself is exactly what app.js's recordAnswerChange
-       set as the answer's own last-changed time -- app.js's renderRating()
-       (the PaaS screen) deliberately reuses that same value rather than
-       stamping "now" at submit time, specifically so effort-rating dwell
-       time is never counted as part of answering the question. If a
-       participant's answered_epoch_ms here looks like it landed AFTER
-       their PaaS screen, that points to the deployed static JS being
-       stale (collectstatic/gunicorn restart pending), not a schema issue
-       -- the source of truth for that timestamp is client-side, in
-       state.answerLastChangedAt[q.id], set at the moment of the actual
-       answer change, never at the rating screen.
+       answered_epoch_ms is the moment the participant CLICKED NEXT on the
+       question screen: app.js stamps state.answerSubmittedAtMs[q.id] =
+       Date.now() in the question's Next handler (the final Next, after the
+       last matrix page) and sends it from renderRating() as answeredEpochMs.
+       It is not the time of the last answer change, and nothing on the PaaS
+       screen affects it, so effort-rating dwell time is never counted as
+       answering time. presented_epoch_ms is stamped in renderQuestion() the
+       moment the question screen appears. Both are integer epoch ms taken
+       straight from the browser's Date.now().
+
+       Sessions recorded BEFORE this change stored the last answer-change
+       time as answered_epoch_ms instead; export_question_timeline.py's
+       next_click_verified column tells the two kinds of session apart. If a
+       NEW session's answered_epoch_ms looks like it landed after its PaaS
+       screen, the deployed static JS is stale (collectstatic / gunicorn
+       restart pending), not a schema issue.
 
 Columns:
-    unix_ms, unix_us, resolution_ms, unix_s, datetime_utc,
-    presented_unix_ms, presented_datetime_utc, source, event_type,
+    unix_ms, unix_us, resolution_ms, unix_s,
+    presented_unix_ms, source, event_type,
     session_key, screen_name, module_id, section_id, question_id,
     item_id, answer_value, effort_rating, stream_source, request_path,
-    client_timestamp, server_timestamp, detail
+    server_epoch_ms, detail
 
 Timestamp honesty (see project notes on ms/us sync):
     Every row in THIS file is timestamped via the browser's Date.now(),
@@ -90,9 +109,7 @@ CSV_COLUMNS = [
     "unix_us",
     "resolution_ms",
     "unix_s",
-    "datetime_utc",
     "presented_unix_ms",
-    "presented_datetime_utc",
     "source",
     "event_type",
     "session_key",
@@ -105,22 +122,23 @@ CSV_COLUMNS = [
     "effort_rating",
     "stream_source",
     "request_path",
-    "client_timestamp",
-    "server_timestamp",
+    "server_epoch_ms",
     "detail",
 ]
 
 
 def _timestamps(epoch_ms):
-    """Given an integer unix_ms, return (unix_ms, unix_us, unix_s, iso_utc).
+    """Given an integer unix_ms, return (unix_ms, unix_us, unix_s).
     unix_us is a lossless *unit* conversion (ms * 1000) -- it does not
     imply the underlying clock measured anything finer than a millisecond."""
     if epoch_ms is None:
-        return "", "", "", ""
-    unix_us = epoch_ms * 1000
-    unix_s = epoch_ms / 1000
-    datetime_utc = dt.datetime.fromtimestamp(unix_s, tz=dt.timezone.utc).isoformat()
-    return epoch_ms, unix_us, unix_s, datetime_utc
+        return "", "", ""
+    return epoch_ms, epoch_ms * 1000, epoch_ms / 1000
+
+
+def _dt_ms(value):
+    """Server-side datetime -> integer unix ms ('' if missing)."""
+    return int(round(value.timestamp() * 1000)) if value else ""
 
 
 def _row(**kwargs):
@@ -135,7 +153,7 @@ def rows_for_activity_event(event, matrix_state):
     threaded across ALL events for a participant (in chronological order)
     so a matrix question's row-click diff carries over correctly even
     though this function only sees one event at a time."""
-    unix_ms, unix_us, unix_s, datetime_utc = _timestamps(event.epoch_ms)
+    unix_ms, unix_us, unix_s = _timestamps(event.epoch_ms)
     session_key = event.session_key or (
         str(event.session.session_key) if event.session_id else ""
     )
@@ -148,7 +166,6 @@ def rows_for_activity_event(event, matrix_state):
         unix_us=unix_us,
         resolution_ms=CLIENT_CLOCK_RESOLUTION_MS if unix_ms != "" else "",
         unix_s=unix_s,
-        datetime_utc=datetime_utc,
         source="activity_event",
         session_key=session_key,
         screen_name=event.screen_name,
@@ -157,8 +174,7 @@ def rows_for_activity_event(event, matrix_state):
         question_id=question_id,
         stream_source=event.stream_source or "",
         request_path=event.request_path,
-        client_timestamp=event.client_timestamp.isoformat() if event.client_timestamp else "",
-        server_timestamp=event.server_timestamp.isoformat() if event.server_timestamp else "",
+        server_epoch_ms=_dt_ms(event.server_timestamp),
     )
 
     if event.event_type == "question_answered" and isinstance(value, dict):
@@ -169,8 +185,12 @@ def rows_for_activity_event(event, matrix_state):
         # row is exactly ONE matrix row, stamped with THIS click's own time.
         key = (session_key, question_id)
         previous = matrix_state.get(key, {})
-        changed = {k: v for k, v in value.items() if previous.get(k) != v}
         matrix_state[key] = dict(value)
+        if isinstance(detail, dict) and detail.get("itemId"):
+            # New-style event: app.js names the clicked row directly.
+            changed = {detail["itemId"]: detail.get("itemValue")}
+        else:
+            changed = {k: v for k, v in value.items() if previous.get(k) != v}
         if not changed:
             return []  # click didn't actually change anything (rare no-op)
         rows = []
@@ -192,16 +212,16 @@ def rows_for_activity_event(event, matrix_state):
 
 def rows_for_question_response(response):
     """ONE row per QuestionResponse -- presented_at and answered_at both
-    live on this SAME row (presented_unix_ms / presented_datetime_utc
-    alongside the row's primary unix_ms / datetime_utc, which is the
-    ANSWERED instant), so module_id/section_id/question_id/answer_value/
+    live on this SAME row (presented_unix_ms
+    alongside the row's primary unix_ms, which is the
+    ANSWERED instant = the click on the question screen's Next button), so module_id/section_id/question_id/answer_value/
     effort_rating are always populated together instead of split across
     two half-empty rows."""
     if response.answered_epoch_ms is None and response.presented_epoch_ms is None:
         return []
 
-    unix_ms, unix_us, unix_s, datetime_utc = _timestamps(response.answered_epoch_ms)
-    presented_unix_ms, _presented_us, _presented_s, presented_datetime_utc = _timestamps(
+    unix_ms, unix_us, unix_s = _timestamps(response.answered_epoch_ms)
+    presented_unix_ms, _presented_us, _presented_s = _timestamps(
         response.presented_epoch_ms
     )
 
@@ -210,9 +230,7 @@ def rows_for_question_response(response):
         unix_us=unix_us,
         resolution_ms=CLIENT_CLOCK_RESOLUTION_MS if unix_ms != "" else "",
         unix_s=unix_s,
-        datetime_utc=datetime_utc,
         presented_unix_ms=presented_unix_ms,
-        presented_datetime_utc=presented_datetime_utc,
         source="question_response",
         event_type="question_answered_final",
         session_key=str(response.session.session_key),
@@ -222,9 +240,7 @@ def rows_for_question_response(response):
         question_id=response.question_id,
         answer_value=response.answer_value,
         effort_rating=response.effort_rating if response.effort_rating is not None else "",
-        client_timestamp=response.answered_at.isoformat() if response.answered_at else "",
-        server_timestamp=response.server_received_at.isoformat()
-            if response.server_received_at else "",
+        server_epoch_ms=_dt_ms(response.server_received_at),
     )]
 
 

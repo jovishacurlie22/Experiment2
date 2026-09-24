@@ -53,17 +53,26 @@ window.StudyAPI = (() => {
     return new Date().toISOString();
   }
 
+  // Unix epoch milliseconds -- every request below carries one, captured at
+  // the moment the call is made. The ISO client_timestamp that some requests
+  // also send only feeds the human-readable DateTimeField columns.
+  function nowMs() {
+    return Date.now();
+  }
+
   return {
     getCookie,
     csrfHeaders,
     nowIso,
+    nowMs,
 
     // POST /api/login/  -> { session_key }
     login(participantId, password, extra) {
       return postJSON("/api/login/", Object.assign({
         participant_id: participantId,
         password,
-        client_timestamp: nowIso()
+        client_timestamp: nowIso(),
+        epoch_ms: nowMs()
       }, extra || {}));
     },
 
@@ -72,10 +81,11 @@ window.StudyAPI = (() => {
         // POST /api/consent/ — fire-and-forget. Now called after login, once
     // session_key is known, so the server can attach consent_given_at to
     // the right StudySession rather than logging it anonymously.
-    logConsent(sessionKey, consentGivenAt) {
+    logConsent(sessionKey, consentGivenAt, consentEpochMs) {
       return postJSON("/api/consent/", {
         session_key: sessionKey,
         consent_given_at: consentGivenAt,
+        epoch_ms: consentEpochMs != null ? consentEpochMs : nowMs(), // the consent click itself
         client_timestamp: nowIso()
       }).catch((err) => console.warn("[StudyAPI] logConsent failed:", err));
     },
@@ -83,13 +93,15 @@ window.StudyAPI = (() => {
     // POST /api/log-event/ — fire-and-forget; logs to console on failure
     // rather than throwing, so a flaky log call never blocks the study.
     logEvent(sessionKey, eventType, { screenName, detail, sourcePath } = {}) {
+      const t = nowMs();
       return postJSON("/api/log-event/", {
         session_key: sessionKey,
         event_type: eventType,
         screen_name: screenName || "",
         detail: detail || {},
         source_path: sourcePath || location.pathname,
-        client_timestamp: nowIso()
+        client_timestamp: new Date(t).toISOString(),
+        epoch_ms: t
       }).catch((err) => console.warn("[StudyAPI] logEvent failed:", err));
     },
 
@@ -119,7 +131,8 @@ window.StudyAPI = (() => {
       return postJSON("/api/finish-session/", {
         session_key: sessionKey,
         end_reason: endReason,
-        client_timestamp: nowIso()
+        client_timestamp: nowIso(),
+        epoch_ms: nowMs()
       });
     }
   };

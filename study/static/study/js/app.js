@@ -243,10 +243,11 @@
   const state = {
     screen: "consent",
     consentGivenAt: null,
+    consentGivenAtMs: null, // epoch ms of the consent click
     participantId: null,
     sessionKey: null, // set on successful server-side login (StudySession.session_key)
     answers: {},   // qid -> option value
-    answerLastChangedAt: {}, // qid -> ISO timestamp of the most recent change to that answer
+    answerLastChangedAt: {}, // qid -> epoch ms of the most recent change to that answer
     answerSubmittedAtMs: {},     // qid -> epoch ms of the click on the question screen's Next button
     questionPresentedAtMs: null, // epoch ms: when the current question screen appeared
     effort: {},    // qid -> paas rating 1-9
@@ -366,17 +367,17 @@
   }, true);
 
   // Text/numeric answers: one event ~800 ms after the last keystroke, with
-  // the last keystroke's own time in detail.lastKeystrokeAt.
+  // the last keystroke's own epoch-ms time in detail.lastKeystrokeMs.
   let textLogTimer = null;
   function logTextInput(q, ctx, value) {
     clearTimeout(textLogTimer);
-    const lastKeystrokeAt = StudyAPI.nowIso();
+    const lastKeystrokeMs = Date.now();
     textLogTimer = setTimeout(() => {
       StudyAPI.logEvent(state.sessionKey, "text_input", {
         screenName: "question",
         detail: {
           moduleId: ctx.module.id, sectionId: ctx.section.id,
-          questionId: q.id, value, lastKeystrokeAt
+          questionId: q.id, value, lastKeystrokeMs
         }
       });
     }, 800);
@@ -532,10 +533,11 @@
         return;
       }
       err.classList.remove("visible");
-      state.consentGivenAt = new Date().toISOString();
+      state.consentGivenAtMs = Date.now();
+      state.consentGivenAt = new Date(state.consentGivenAtMs).toISOString();
       // Attaches consent_given_at to the StudySession created at login,
       // keyed by session_key -- see log_consent in views.py.
-      StudyAPI.logConsent(state.sessionKey, state.consentGivenAt);
+      StudyAPI.logConsent(state.sessionKey, state.consentGivenAt, state.consentGivenAtMs);
       // Recording (webcam/screen + RealEye gaze) starts only now that consent
       // has actually been given -- previously this fired at login, before the
       // participant had seen or agreed to the consent screen.
@@ -871,18 +873,17 @@
   // option-based inputs, not raw text keystrokes -- also logs a
   // question_answered activity event so the full revision history is on
   // the server, not just the final value.
-  function recordAnswerChange(q, ctx, value, { logIt = true } = {}) {
-    const now = StudyAPI.nowIso();
-    state.answerLastChangedAt[q.id] = now;
+  function recordAnswerChange(q, ctx, value, { logIt = true, extra = null } = {}) {
+    state.answerLastChangedAt[q.id] = Date.now();
     if (logIt && state.sessionKey) {
       StudyAPI.logEvent(state.sessionKey, "question_answered", {
         screenName: "question",
-        detail: {
+        detail: Object.assign({
           moduleId: ctx.module.id,
           sectionId: ctx.section.id,
           questionId: q.id,
           value
-        }
+        }, extra || {})
       });
     }
   }
@@ -1022,6 +1023,14 @@
         });
       } else if (q.type === "matrix") {
         const items = currentMatrixItems();
+        // This matrix page is now on screen: log when, and which rows it holds
+        // (per-row response times are measured from this moment).
+        logUI("matrix_page_shown", {
+          questionId: q.id,
+          page: matrixPage ? matrixPage.index : 0,
+          totalPages: matrixPage ? matrixPage.totalPages : 1,
+          rowIds: items.map((item) => item.id)
+        });
         // Seed from whatever's already been recorded for this question
         // (earlier matrix pages included) rather than starting blank --
         // starting blank meant the first change on a later page used to
@@ -1037,7 +1046,15 @@
             input.addEventListener("change", (e) => {
               answerObj[item.id] = e.target.value;
               state.answers[q.id] = answerObj;
-              recordAnswerChange(q, ctx, answerObj);
+              // One event per row click, stamped with THIS click's own time and
+              // naming the row (itemId) and the option chosen (itemValue).
+              recordAnswerChange(q, ctx, answerObj, {
+                extra: {
+                  itemId: item.id,
+                  itemValue: e.target.value,
+                  page: matrixPage ? matrixPage.index : 0
+                }
+              });
               checkComplete();
             });
           });

@@ -45,7 +45,7 @@ def to_epoch_ms(dt):
     """Convert an aware/naive datetime to Unix epoch milliseconds."""
     if dt is None:
         return None
-    return int(dt.timestamp() * 1000)
+    return int(round(dt.timestamp() * 1000))
 
 
 def resolved_epoch_ms(payload, client_dt=None):
@@ -227,6 +227,20 @@ def submit_response(request):
     presented_dt = parse_client_dt(payload.get("presented_at"))
     answered_dt = parse_client_dt(payload.get("answered_at"))
 
+    def _explicit_ms(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    # Prefer the exact epoch ms the browser sent; fall back to the ISO time.
+    presented_ms = _explicit_ms(payload.get("presented_epoch_ms"))
+    if presented_ms is None:
+        presented_ms = to_epoch_ms(presented_dt)
+    answered_ms = _explicit_ms(payload.get("answered_epoch_ms"))
+    if answered_ms is None:
+        answered_ms = to_epoch_ms(answered_dt)
+
     response, _created = QuestionResponse.objects.update_or_create(
         session=session,
         question_id=question_id,
@@ -237,8 +251,8 @@ def submit_response(request):
             "effort_rating": payload.get("effort_rating"),
             "presented_at": presented_dt,
             "answered_at": answered_dt,
-            "presented_epoch_ms": to_epoch_ms(presented_dt),
-            "answered_epoch_ms": to_epoch_ms(answered_dt),
+            "presented_epoch_ms": presented_ms,
+            "answered_epoch_ms": answered_ms,
         },
     )
     return JsonResponse({"ok": True, "response_id": response.id})

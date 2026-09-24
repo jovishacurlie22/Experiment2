@@ -1,4 +1,4 @@
-"""
+r"""
 python manage.py export_response_times --output response_times.csv
 python manage.py export_response_times --participant 12 --output p12_response_times.csv
 python manage.py export_response_times --session-key <uuid> --output session_response_times.csv
@@ -15,7 +15,7 @@ from study.models import QuestionResponse
 class Command(BaseCommand):
     help = (
         "Exports each participant's question responses together with their "
-        "response times (epoch-ms and seconds), as a single CSV."
+        "unix-ms timestamps and response times (ms and seconds), as a single CSV."
     )
 
     def add_arguments(self, parser):
@@ -53,8 +53,7 @@ class Command(BaseCommand):
             writer.writerow([
                 "participant_code", "session_key", "module_id", "section_id",
                 "question_id", "answer_value", "effort_rating",
-                "presented_at", "answered_at",
-                "presented_epoch_ms", "answered_epoch_ms",
+                "presented_epoch_ms", "answered_epoch_ms", "server_received_epoch_ms",
                 "response_time_ms", "response_time_seconds", "flag",
             ])
 
@@ -85,10 +84,9 @@ class Command(BaseCommand):
                     r.module_id, r.section_id, r.question_id,
                     r.answer_value,
                     r.effort_rating if r.effort_rating is not None else "",
-                    r.presented_at.isoformat() if r.presented_at else "",
-                    r.answered_at.isoformat() if r.answered_at else "",
                     r.presented_epoch_ms if r.presented_epoch_ms is not None else "",
                     r.answered_epoch_ms if r.answered_epoch_ms is not None else "",
+                    round(r.server_received_at.timestamp() * 1000) if r.server_received_at else "",
                     response_time_ms, response_time_seconds, flag,
                 ])
                 rows_written += 1
