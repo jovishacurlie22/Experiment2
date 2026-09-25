@@ -120,6 +120,7 @@ class ActivityEvent(models.Model):
         ("click", "Click"),
         ("text_input", "Text Input"),
         ("matrix_page_next", "Matrix Page Next"),
+        ("matrix_page_shown", "Matrix Page Shown"),
         ("rating_selected", "PaaS Rating Selected"),
         ("end_study_opened", "End-Study Modal Opened"),
         ("end_study_cancelled", "End-Study Cancelled"),

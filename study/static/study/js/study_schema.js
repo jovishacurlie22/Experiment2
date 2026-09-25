@@ -2328,8 +2328,8 @@ window.STUDY_MODULES = [
     title: "Coping Responses and Climate Change",
     sections: [
       {
-        id: "mecamh-coping-responses-and-climate-change-climate-change-worry-ojala-2012",
-        title: "Climate Change Worry (Ojala 2012)",
+        id: "mecamh-coping-responses-and-climate-change-climate-change-worry",
+        title: "Climate Change Worry",
         questions: [
         {
           id: "mecamh-coping-responses-and-climate-change-q2",
@@ -2355,8 +2355,8 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "mecamh-coping-responses-and-climate-change-coping-responses-ojala-2012",
-        title: "Coping Responses (Ojala 2012)",
+        id: "mecamh-coping-responses-and-climate-change-coping-responses",
+        title: "Coping Responses",
         questions: [
         {
           id: "mecamh-coping-responses-and-climate-change-q1",
@@ -2398,8 +2398,8 @@ window.STUDY_MODULES = [
     title: "Climate Anxiety",
     sections: [
       {
-        id: "mecamh-climate-anxiety-state-anxiety-modelled-on-the-stai",
-        title: "[State] Anxiety (modelled on the STAI)",
+        id: "mecamh-climate-anxiety-anxiety",
+        title: "Anxiety",
         questions: [
         {
           id: "mecamh-climate-anxiety-q1",
@@ -2425,8 +2425,8 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "mecamh-climate-anxiety-anticipatory-traumatic-reaction-feelings-sub-scale-hopwood-et-al-2017",
-        title: "Anticipatory Traumatic Reaction – Feelings Sub-Scale (Hopwood et al. 2017)",
+        id: "mecamh-climate-anxiety-anticipatory-traumatic-reaction",
+        title: "Anticipatory Traumatic Reaction",
         questions: [
         {
           id: "mecamh-climate-anxiety-q2",
