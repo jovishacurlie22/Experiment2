@@ -368,6 +368,32 @@ h1.study-title {
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
+
+/* Fix 1: style the checkboxes to match the radio buttons elsewhere */
+.choice-option-multi input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Fix 2: let grid/flex items actually shrink instead of overflowing,
+   and let long comma-separated med names wrap inside their card */
+.choice-list-multi .choice-option-multi {
+  min-width: 0;
+  align-items: flex-start; /* keeps checkbox pinned to top when text wraps to 2-3 lines */
+}
+
+.choice-list-multi .choice-option-multi input[type="checkbox"] {
+  margin-top: 0.75rem; /* re-center the checkbox against the first line of wrapped text */
+}
+
+.choice-option .option-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 /* ---------------------------------------------------------------------- */
 /* Ordinal scale — ordered options laid out low -> high with a connecting */
 /* line, so the ordering (unlike nominal/categorical) reads visually.     */
