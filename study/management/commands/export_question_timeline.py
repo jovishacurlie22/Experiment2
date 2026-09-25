@@ -1,8 +1,26 @@
 """
-Per-question timeline export: ONE row per participant per question, with
-every moment that matters for a cognitive-load analysis on the same row,
-all as integer epoch milliseconds (browser Date.now()), plus the derived
-durations.
+Per-question timeline export: ONE row per participant per question -- and,
+for MATRIX questions, ONE ROW PER SUB-QUESTION (matrix row, `item_id`) --
+with every moment that matters for a cognitive-load analysis on the same
+row, all as integer epoch milliseconds (browser Date.now()), plus the
+derived durations.
+
+Matrix rows (item_id filled):
+    presented_ms          the page holding this row appeared
+    first_interaction_ms  first click on this row;  last_change_ms / answered_ms
+                          = its last click (its final answer)
+    next_clicked_ms       the question's final Next click (logged, but it is
+                          NOT this row's answer time)
+    since_prev_click_ms   first click - previous click on the page (or page
+                          shown): the "time spent on this row" measure
+    response_ms           answered_ms - presented_ms
+    reading_ms            page shown -> first click on this row
+    answering_ms          blank (not meaningful per row)
+    attention columns     measured over that same "time on this row" window
+    PaaS columns / effort_rating / question_ms repeat the QUESTION-level value
+    on every sub-row (the PaaS scale is asked once per matrix question) --
+    don't sum or average them across sub-rows as if independent.
+    question_order numbers questions; all sub-rows of a matrix share it.
 
 Usage (from the project root, same place you run manage.py):
     python manage.py export_question_timeline
@@ -30,6 +48,10 @@ Definitions (all times epoch ms):
     last_change_ms        last answer change before Next
     next_clicked_ms       the click on the question screen's Next button
                           (= QuestionResponse.answered_epoch_ms)
+    answered_ms           when the (sub-)question was answered: = next_clicked_ms
+                          for ordinary questions, the row's last click for matrix rows
+    question_presented_ms question screen first appeared (= presented_ms except
+                          on later pages of a paginated matrix)
     paas_shown_ms         PaaS rating screen appeared
     paas_first_click_ms / paas_last_click_ms   first / last PaaS value clicked
     paas_submitted_ms     click on the PaaS screen's Next button (falls back
@@ -38,7 +60,9 @@ Definitions (all times epoch ms):
 Derived durations (ms):
     reading_ms                  presented -> first_interaction
     answering_ms                first_interaction -> next_clicked
-    question_ms                 presented -> next_clicked
+    question_ms                 question_presented -> next_clicked (question level)
+    response_ms                 presented -> answered (= question_ms for ordinary
+                                questions; per-row for matrix rows)
     post_answer_hesitation_ms   last_change -> next_clicked
     paas_first_click_latency_ms paas_shown -> paas_first_click
     paas_ms                     paas_shown -> paas_submitted
@@ -56,7 +80,10 @@ Quality columns:
                          rows separately when comparing response times.
     flag                 ';'-joined: no_response (question shown, never
                          submitted), no_paas_screen_event, negative_duration,
-                         no_presented_time
+                         no_presented_time, matrix_not_expanded (matrix answer
+                         with no per-row click events -- older app.js -- kept
+                         as one row), plus the matrix row flags no_click /
+                         no_page_event
 
 Notes / limits:
     * Sessions recorded before the extra event types existed have no
@@ -75,17 +102,25 @@ from django.db.models import Q
 
 from study.models import ActivityEvent, Participant, QuestionResponse, StudySession
 
+try:  # normal case: both commands live in the same management/commands package
+    from .export_matrix_responses import build_matrix_rows
+except ImportError:  # run as a plain module (tests)
+    from export_matrix_responses import build_matrix_rows
+
 QUESTION_NEXT_ID = "btn-next"          # question screen's Next button (app.js)
 RATING_NEXT_ID = "btn-rating-next"     # PaaS screen's Next button (app.js)
 NEXT_CLICK_TOLERANCE_MS = 50
 
 CSV_COLUMNS = [
     "participant_code", "session_key", "question_order",
-    "module_id", "section_id", "question_id", "answer_value", "effort_rating",
-    "presented_ms", "first_interaction_ms", "last_change_ms", "next_clicked_ms",
+    "module_id", "section_id", "question_id", "item_id", "page_index",
+    "answer_value", "effort_rating",
+    "question_presented_ms", "presented_ms", "first_interaction_ms",
+    "last_change_ms", "answered_ms", "next_clicked_ms",
     "paas_shown_ms", "paas_first_click_ms", "paas_last_click_ms",
     "paas_submitted_ms", "paas_submitted_source",
-    "reading_ms", "answering_ms", "question_ms", "post_answer_hesitation_ms",
+    "reading_ms", "answering_ms", "question_ms", "response_ms",
+    "since_prev_click_ms", "post_answer_hesitation_ms",
     "paas_first_click_latency_ms", "paas_ms",
     "n_answer_events", "n_text_bursts", "n_paas_changes",
     "n_clicks", "n_back_attempts", "n_clipboard",
@@ -187,7 +222,14 @@ def build_session_rows(participant_code, session_key, events, responses):
     q_starts = sorted(shown_q.values())
     rows = []
 
-    for qid in set(responses) | set(shown_q):
+    # Matrix questions are exported ONE ROW PER SUB-QUESTION (matrix row),
+    # timed by that row's own clicks; see export_matrix_responses.py.
+    matrix_rows, _n_missing = build_matrix_rows(participant_code, session_key, events, responses)
+    matrix_by_q = defaultdict(list)
+    for mr in matrix_rows:
+        matrix_by_q[mr["question_id"]].append(mr)
+
+    for qid in set(responses) | set(shown_q) | set(matrix_by_q):
         r = responses.get(qid)
         flags = []
 
@@ -205,24 +247,10 @@ def build_session_rows(participant_code, session_key, events, responses):
         # next question's appearance, else the end of the session's events.
         q_end = next_clicked if next_clicked is not None else paas_shown
         if q_end is None and presented is not None:
-            later = [s for s in q_starts if s > presented]
+            later = [s_ for s_ in q_starts if s_ > presented]
             q_end = later[0] if later else last_ts
 
-        # Question-screen interaction times.
-        first_int = last_change = None
-        n_answer = n_text = n_clicks = ""
-        if presented is not None and q_end is not None:
-            in_win = lambda t: presented <= t <= q_end
-            q_clicks = [t for t, cid in clicks if in_win(t) and cid != QUESTION_NEXT_ID]
-            a_ts = [t for t in answered[qid] if in_win(t)]
-            x_ts = [t for t in texts[qid] if in_win(t)]
-            cands = q_clicks + a_ts + x_ts
-            first_int = min(cands) if cands else None
-            changes = a_ts + x_ts
-            last_change = max(changes) if changes else None
-            n_answer, n_text, n_clicks = len(a_ts), len(x_ts), len(q_clicks)
-
-        # PaaS screen.
+        # PaaS screen (question-level; repeated on every sub-row of a matrix).
         paas_first = paas_last = None
         sel = [t for t in rating_sel[qid] if paas_shown is None or t >= paas_shown]
         if sel:
@@ -249,48 +277,118 @@ def build_session_rows(participant_code, session_key, events, responses):
         if question_ms != "" and question_ms < 0:
             flags.append("negative_duration")
 
-        rows.append({
+        common = {
             "participant_code": participant_code,
             "session_key": session_key,
-            "module_id": r.module_id if r else "",
-            "section_id": r.section_id if r else "",
             "question_id": qid,
-            "answer_value": r.answer_value if r else "",
             "effort_rating": r.effort_rating if r and r.effort_rating is not None else "",
-            "presented_ms": presented if presented is not None else "",
-            "first_interaction_ms": first_int if first_int is not None else "",
-            "last_change_ms": last_change if last_change is not None else "",
+            "question_presented_ms": presented if presented is not None else "",
             "next_clicked_ms": next_clicked if next_clicked is not None else "",
             "paas_shown_ms": paas_shown if paas_shown is not None else "",
             "paas_first_click_ms": paas_first if paas_first is not None else "",
             "paas_last_click_ms": paas_last if paas_last is not None else "",
             "paas_submitted_ms": paas_sub if paas_sub is not None else "",
             "paas_submitted_source": paas_src,
-            "reading_ms": _diff(first_int, presented),
-            "answering_ms": _diff(next_clicked, first_int),
             "question_ms": question_ms,
-            "post_answer_hesitation_ms": _diff(next_clicked, last_change),
             "paas_first_click_latency_ms": _diff(paas_first, paas_shown),
             "paas_ms": _diff(paas_sub, paas_shown),
-            "n_answer_events": n_answer,
-            "n_text_bursts": n_text,
             "n_paas_changes": len(sel),
-            "n_clicks": n_clicks,
+            "tab_hidden_ms_paas": _overlap(hidden, paas_shown, paas_sub),
+            "blur_ms_paas": _overlap(blurred, paas_shown, paas_sub),
+            "next_click_verified": verified,
+        }
+
+        if qid in matrix_by_q:
+            # ---- one row per matrix sub-question -------------------------
+            for mr in matrix_by_q[qid]:
+                page_shown = mr["page_shown_ms"] if mr["page_shown_ms"] != "" else presented
+                first = mr["first_click_ms"] if mr["first_click_ms"] != "" else None
+                last = mr["last_click_ms"] if mr["last_click_ms"] != "" else None
+                since_prev = mr["since_prev_click_ms"]
+                # Time "spent on this row" = previous click (or page shown) -> its first click.
+                anchor = first - since_prev if (first is not None and since_prev != "") else page_shown
+                row_flags = list(flags) + [f for f in mr["flag"].split(";") if f]
+                rows.append(dict(common, **{
+                    "module_id": mr["module_id"], "section_id": mr["section_id"],
+                    "item_id": mr["item_id"], "page_index": mr["page_index"],
+                    "answer_value": mr["final_value"],
+                    "presented_ms": page_shown if page_shown is not None else "",
+                    "first_interaction_ms": first if first is not None else "",
+                    "last_change_ms": last if last is not None else "",
+                    "answered_ms": last if last is not None else "",
+                    "reading_ms": _diff(first, page_shown),
+                    "answering_ms": "",   # n/a for a matrix row (see docstring)
+                    "response_ms": _diff(last, page_shown),
+                    "since_prev_click_ms": since_prev,
+                    "post_answer_hesitation_ms": _diff(next_clicked, last),
+                    "n_answer_events": mr["n_changes"], "n_text_bursts": "",
+                    "n_clicks": mr["n_changes"],
+                    "n_back_attempts": _count(backs, anchor, first),
+                    "n_clipboard": _count(clips, anchor, first),
+                    "tab_hidden_ms_question": _overlap(hidden, anchor, first),
+                    "blur_ms_question": _overlap(blurred, anchor, first),
+                    "fullscreen_exits_question": _count(fs_exits, anchor, first),
+                    "fullscreen_out_ms_question": _overlap(fs_out, anchor, first),
+                    "flag": ";".join(row_flags),
+                }))
+            continue
+
+        # ---- regular (non-matrix) question: one row ------------------------
+        if r is not None and str(r.answer_value).lstrip().startswith("{"):
+            # A matrix answer with no per-row click events (session recorded
+            # before app.js sent itemId): can't be split, so it stays one row.
+            flags.append("matrix_not_expanded")
+        first_int = last_change = None
+        n_answer = n_text = n_clicks = ""
+        if presented is not None and q_end is not None:
+            in_win = lambda t: presented <= t <= q_end
+            q_clicks = [t for t, cid in clicks if in_win(t) and cid != QUESTION_NEXT_ID]
+            a_ts = [t for t in answered[qid] if in_win(t)]
+            x_ts = [t for t in texts[qid] if in_win(t)]
+            cands = q_clicks + a_ts + x_ts
+            first_int = min(cands) if cands else None
+            changes = a_ts + x_ts
+            last_change = max(changes) if changes else None
+            n_answer, n_text, n_clicks = len(a_ts), len(x_ts), len(q_clicks)
+
+        rows.append(dict(common, **{
+            "module_id": r.module_id if r else "",
+            "section_id": r.section_id if r else "",
+            "item_id": "", "page_index": "",
+            "answer_value": r.answer_value if r else "",
+            "presented_ms": presented if presented is not None else "",
+            "first_interaction_ms": first_int if first_int is not None else "",
+            "last_change_ms": last_change if last_change is not None else "",
+            "answered_ms": next_clicked if next_clicked is not None else "",
+            "reading_ms": _diff(first_int, presented),
+            "answering_ms": _diff(next_clicked, first_int),
+            "response_ms": question_ms,
+            "since_prev_click_ms": "",
+            "post_answer_hesitation_ms": _diff(next_clicked, last_change),
+            "n_answer_events": n_answer, "n_text_bursts": n_text, "n_clicks": n_clicks,
             "n_back_attempts": _count(backs, presented, q_end),
             "n_clipboard": _count(clips, presented, q_end),
             "tab_hidden_ms_question": _overlap(hidden, presented, q_end),
-            "tab_hidden_ms_paas": _overlap(hidden, paas_shown, paas_sub),
             "blur_ms_question": _overlap(blurred, presented, q_end),
-            "blur_ms_paas": _overlap(blurred, paas_shown, paas_sub),
             "fullscreen_exits_question": _count(fs_exits, presented, q_end),
             "fullscreen_out_ms_question": _overlap(fs_out, presented, q_end),
-            "next_click_verified": verified,
             "flag": ";".join(flags),
-        })
+        }))
 
-    rows.sort(key=lambda x: x["presented_ms"] if x["presented_ms"] != "" else float("inf"))
-    for i, row in enumerate(rows, start=1):
-        row["question_order"] = i
+    def sort_key(x):
+        qp = x["question_presented_ms"] if x["question_presented_ms"] != "" else float("inf")
+        pg = x["page_index"] if x["page_index"] != "" else 0
+        fc = x["first_interaction_ms"] if x["first_interaction_ms"] != "" else float("inf")
+        return (qp, x["question_id"], pg, fc)
+
+    rows.sort(key=sort_key)
+    # question_order numbers QUESTIONS (all sub-rows of a matrix share one number).
+    order, n = {}, 0
+    for row in rows:
+        if row["question_id"] not in order:
+            n += 1
+            order[row["question_id"]] = n
+        row["question_order"] = order[row["question_id"]]
     return rows
 
 

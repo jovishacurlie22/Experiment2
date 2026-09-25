@@ -45,7 +45,15 @@ see each source below for which instant that is):
         emitted -- one CSV row per matrix row, carrying that click's own
         timestamp, event_type "matrix_row_answered", and the item_id
         column identifying which row it was.
-    2. ONE row per QuestionResponse -- not two. Its primary timestamp
+    2. ONE row per QuestionResponse -- not two -- except MATRIX questions,
+       which get ONE ROW PER SUB-QUESTION (item_id = the matrix row; its
+       unix_ms = that row's last click, presented_unix_ms = when its page
+       appeared; effort_rating = the question's PaaS rating, repeated on each
+       sub-row; detail = first_click_ms / since_prev_click_ms / n_changes /
+       question_next_clicked_ms). The per-click matrix_row_answered rows from
+       (1b) are kept too: they are the raw click log, one per click including
+       changed answers, whereas these are one final row per sub-question.
+       For ordinary questions the row's primary timestamp
        (unix_ms) is the ANSWERED instant (answered_epoch_ms),
        since that's the moment worth sorting a question's row by. The
        earlier PRESENTED instant is kept too, in presented_unix_ms /
@@ -94,10 +102,17 @@ import csv
 import datetime as dt
 import json
 import os
+from collections import defaultdict
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db.models import Q
 
 from study.models import ActivityEvent, Participant, QuestionResponse
+
+try:  # normal case: both commands live in the same management/commands package
+    from .export_matrix_responses import build_matrix_rows
+except ImportError:  # run as a plain module (tests)
+    from export_matrix_responses import build_matrix_rows
 
 # Every timestamp in this export originates from the browser's Date.now(),
 # a real absolute unix clock but with ~1ms granularity. Recorded explicitly
@@ -210,15 +225,73 @@ def rows_for_activity_event(event, matrix_state):
     return [_row(**row)]
 
 
-def rows_for_question_response(response):
-    """ONE row per QuestionResponse -- presented_at and answered_at both
-    live on this SAME row (presented_unix_ms
-    alongside the row's primary unix_ms, which is the
-    ANSWERED instant = the click on the question screen's Next button), so module_id/section_id/question_id/answer_value/
+def _is_matrix_answer(answer_value):
+    try:
+        return isinstance(json.loads(answer_value), dict)
+    except (TypeError, ValueError):
+        return False
+
+
+def rows_for_question_response(response, matrix_items=None):
+    """ONE row per QuestionResponse -- or, for a MATRIX question, ONE ROW PER
+    SUB-QUESTION (matrix row). presented_at and answered_at both live on the
+    SAME row (presented_unix_ms alongside the row's primary unix_ms, which is
+    the ANSWERED instant), so module_id/section_id/question_id/answer_value/
     effort_rating are always populated together instead of split across
-    two half-empty rows."""
+    two half-empty rows.
+
+    Ordinary question: unix_ms = the click on the question screen's Next
+    button; presented_unix_ms = the question screen appearing.
+    Matrix sub-question: unix_ms = that row's LAST click (its final answer);
+    presented_unix_ms = when its page appeared; item_id = the row; answer_value
+    = the option finally chosen; effort_rating = the question-level PaaS
+    rating (asked once per matrix, repeated on each sub-row); `detail` carries
+    the row's first_click_ms, since_prev_click_ms, n_changes and the
+    question's Next-click time.
+
+    matrix_items: {item_id: row-dict from build_matrix_rows} for this
+    (session, question), or None."""
     if response.answered_epoch_ms is None and response.presented_epoch_ms is None:
         return []
+
+    if matrix_items and _is_matrix_answer(response.answer_value):
+        out = []
+        for item_id, mr in sorted(
+            matrix_items.items(),
+            key=lambda kv: (kv[1]["page_index"] if kv[1]["page_index"] != "" else 0,
+                            kv[1]["first_click_ms"] if kv[1]["first_click_ms"] != "" else float("inf")),
+        ):
+            answered = mr["last_click_ms"] if mr["last_click_ms"] != "" else None
+            presented = mr["page_shown_ms"] if mr["page_shown_ms"] != "" else response.presented_epoch_ms
+            unix_ms, unix_us, unix_s = _timestamps(answered)
+            presented_unix_ms, _pu, _ps = _timestamps(presented)
+            out.append(_row(
+                unix_ms=unix_ms,
+                unix_us=unix_us,
+                resolution_ms=CLIENT_CLOCK_RESOLUTION_MS if unix_ms != "" else "",
+                unix_s=unix_s,
+                presented_unix_ms=presented_unix_ms,
+                source="question_response",
+                event_type="question_answered_final",
+                session_key=str(response.session.session_key),
+                screen_name="question",
+                module_id=response.module_id,
+                section_id=response.section_id,
+                question_id=response.question_id,
+                item_id=item_id,
+                answer_value=mr["final_value"],
+                effort_rating=response.effort_rating if response.effort_rating is not None else "",
+                server_epoch_ms=_dt_ms(response.server_received_at),
+                detail=json.dumps({
+                    "first_click_ms": mr["first_click_ms"],
+                    "since_prev_click_ms": mr["since_prev_click_ms"],
+                    "n_changes": mr["n_changes"],
+                    "page_index": mr["page_index"],
+                    "question_next_clicked_ms": response.answered_epoch_ms,
+                    "flag": mr["flag"],
+                }),
+            ))
+        return out
 
     unix_ms, unix_us, unix_s = _timestamps(response.answered_epoch_ms)
     presented_unix_ms, _presented_us, _presented_s = _timestamps(
@@ -282,17 +355,42 @@ class Command(BaseCommand):
         total_rows = 0
 
         for participant in participants:
-            events = ActivityEvent.objects.filter(participant=participant).order_by("session_key", "epoch_ms")
-            responses = QuestionResponse.objects.filter(
-                session__participant=participant
-            ).select_related("session")
+            # participant OR session-linked, so events are never dropped just
+            # because their participant column was left empty.
+            events = list(
+                ActivityEvent.objects
+                .filter(Q(participant=participant) | Q(session__participant=participant))
+                .select_related("session")
+                .order_by("session_key", "epoch_ms")
+            )
+            responses = list(
+                QuestionResponse.objects.filter(session__participant=participant)
+                .select_related("session")
+            )
+
+            # Per-sub-question data for matrix questions (from click events).
+            events_by_session = defaultdict(list)
+            for event in events:
+                sk = event.session_key or (str(event.session.session_key) if event.session_id else "")
+                events_by_session[sk].append(event)
+            responses_by_session = defaultdict(dict)
+            for response in responses:
+                responses_by_session[str(response.session.session_key)][response.question_id] = response
+            matrix_items = defaultdict(dict)  # (session_key, question_id) -> {item_id: row}
+            for sk, evs in events_by_session.items():
+                mrows, _missing = build_matrix_rows(
+                    participant.participant_code, sk, evs, responses_by_session.get(sk, {})
+                )
+                for mr in mrows:
+                    matrix_items[(sk, mr["question_id"])][mr["item_id"]] = mr
 
             rows = []
             matrix_state = {}  # reset per participant; keyed by session_key too
             for event in events:
                 rows.extend(rows_for_activity_event(event, matrix_state))
             for response in responses:
-                rows.extend(rows_for_question_response(response))
+                key = (str(response.session.session_key), response.question_id)
+                rows.extend(rows_for_question_response(response, matrix_items.get(key)))
 
             if not rows and not wanted_codes:
                 continue
