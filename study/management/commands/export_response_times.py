@@ -6,6 +6,7 @@ scp iiitb@172.16.203.16:~/Experiment2/responses.csv D:\Experiment2\
 """
 
 import csv
+import os
 
 from django.core.management.base import BaseCommand
 
@@ -47,7 +48,9 @@ class Command(BaseCommand):
         rows_written = 0
         missing_timestamps = 0
         negative_durations = 0
-
+        out_dir = os.path.dirname(output_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
         with open(output_path, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
