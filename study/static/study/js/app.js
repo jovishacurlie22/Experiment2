@@ -1198,7 +1198,7 @@
   function renderEnd() {
     const early = state.endReason === "manual" || state.endReason === "timeout";
     const heading = early ? "Study Ended" : "Thank you!";
-    const icon = early ? "⏹️" : "✅";
+    const icon = "✅";
     const message =
       state.endReason === "manual"
         ? "Your recording has been saved.Thank you for your time!"
