@@ -2323,24 +2323,24 @@ window.STUDY_MODULES = [
     ]
   },
   {
-    id: "mecamh-coping-responses-and-climate-change",
+    id: "mecamh-coping-responses-and-climate-change-worry",
     kind: "standard",
-    title: "Coping Responses and Climate Change",
+    title: "Coping Responses and Climate Change Worry",
     sections: [
       {
-        id: "mecamh-coping-responses-and-climate-change-climate-change-worry",
+        id: "mecamh-coping-responses-and-climate-change-worry-climate-change-worry",
         title: "Climate Change Worry",
         questions: [
         {
-          id: "mecamh-coping-responses-and-climate-change-q2",
+          id: "mecamh-coping-responses-and-climate-change-worry-q2",
           type: "matrix",
           stem: "How worried are you about the negative consequences of climate change for the following?",
           items: [
-            { id: "mecamh-coping-responses-and-climate-change-q2-i0", label: "You" },
-            { id: "mecamh-coping-responses-and-climate-change-q2-i1", label: "People close to you" },
-            { id: "mecamh-coping-responses-and-climate-change-q2-i2", label: "Future generations" },
-            { id: "mecamh-coping-responses-and-climate-change-q2-i3", label: "People in economically deprived countries" },
-            { id: "mecamh-coping-responses-and-climate-change-q2-i4", label: "Animals/Nature" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q2-i0", label: "You" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q2-i1", label: "People close to you" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q2-i2", label: "Future generations" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q2-i3", label: "People in economically deprived countries" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q2-i4", label: "Animals/Nature" },
           ],
           options: [
             { value: "1", label: "Not at all" },
@@ -2355,30 +2355,30 @@ window.STUDY_MODULES = [
         ]
       },
       {
-        id: "mecamh-coping-responses-and-climate-change-coping-responses",
+        id: "mecamh-coping-responses-and-climate-change-worry-coping-responses",
         title: "Coping Responses",
         questions: [
         {
-          id: "mecamh-coping-responses-and-climate-change-q1",
+          id: "mecamh-coping-responses-and-climate-change-worry-q1",
           type: "matrix",
           stem: "When one hears about societal problems such as climate change, one can feel worried or upset. Below is a list and for every item we would like you to indicate how well it applies to what you do or think when you are reminded of climate change. Please choose the alternative you feel best applies to you.",
           items: [
-            { id: "mecamh-coping-responses-and-climate-change-q1-i0", label: "I think about what I myself can do to help fight the climate problem" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i1", label: "I think about that climate change is something positive since the summers will get warmer in the future" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i2", label: "I trust scientists to most probably come up with a solution in the future" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i3", label: "I think that the problem is exaggerated, the climate problem is not as serious as some scientists claim" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i4", label: "I search for information about what I can do as an individual to help" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i5", label: "I don’t care since I don’t know that much about climate change" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i6", label: "I think about that more and more people have started to take the climate change problem seriously" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i7", label: "I can’t be bothered to care about the climate change issue" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i8", label: "I talk to my family or my friends about what one can do to help improve the climate problem" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i9", label: "I think that nothing really serious will happen during my lifetime" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i10", label: "I have faith in humans and humanity; we can fix most problems" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i11", label: "I think about that as long as there are people engaged in climate change organisations we can manage the problem" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i12", label: "I think that the climate change problem does not concern people living in my country" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i13", label: "I think about that politicians in more and more countries have started to take the climate change issue seriously" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i14", label: "I think that even though it’s a big problem, one has to have hope" },
-            { id: "mecamh-coping-responses-and-climate-change-q1-i15", label: "I think climate change is natural and therefore nothing to worry about" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i0", label: "I think about what I myself can do to help fight the climate problem" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i1", label: "I think about that climate change is something positive since the summers will get warmer in the future" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i2", label: "I trust scientists to most probably come up with a solution in the future" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i3", label: "I think that the problem is exaggerated, the climate problem is not as serious as some scientists claim" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i4", label: "I search for information about what I can do as an individual to help" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i5", label: "I don’t care since I don’t know that much about climate change" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i6", label: "I think about that more and more people have started to take the climate change problem seriously" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i7", label: "I can’t be bothered to care about the climate change issue" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i8", label: "I talk to my family or my friends about what one can do to help improve the climate problem" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i9", label: "I think that nothing really serious will happen during my lifetime" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i10", label: "I have faith in humans and humanity; we can fix most problems" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i11", label: "I think about that as long as there are people engaged in climate change organisations we can manage the problem" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i12", label: "I think that the climate change problem does not concern people living in my country" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i13", label: "I think about that politicians in more and more countries have started to take the climate change issue seriously" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i14", label: "I think that even though it’s a big problem, one has to have hope" },
+            { id: "mecamh-coping-responses-and-climate-change-worry-q1-i15", label: "I think climate change is natural and therefore nothing to worry about" },
           ],
           options: [
             { value: "1", label: "Not true at all" },

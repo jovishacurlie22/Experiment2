@@ -7,7 +7,7 @@ window.STUDY_CONFIG_ASC = {
   activeModuleIds: [
     "demographics",
     "mecamh-sleep-quality",
-    "mecamh-coping-responses-and-climate-change",
+    "mecamh-coping-responses-and-climate-change-worry",
     "mecamh-climate-anxiety",
     "hms-overall-health",
     "hms-financial-stress",
@@ -24,9 +24,9 @@ window.STUDY_CONFIG_ASC = {
       "demographics-department",
       "demographics-socioeconomic-status",
     ],
-    "mecamh-coping-responses-and-climate-change": [
-      "mecamh-coping-responses-and-climate-change-climate-change-worry",
-      "mecamh-coping-responses-and-climate-change-coping-responses",
+    "mecamh-coping-responses-and-climate-change-worry": [
+      "mecamh-coping-responses-and-climate-change-worry-climate-change-worry",
+      "mecamh-coping-responses-and-climate-change-worry-coping-responses",
     ],
     "mecamh-climate-anxiety": [
       "mecamh-climate-anxiety-anxiety",
@@ -264,7 +264,7 @@ window.STUDY_CONFIG_DESC = {
     "hms-financial-stress",
     "hms-overall-health",
     "mecamh-climate-anxiety",
-    "mecamh-coping-responses-and-climate-change",
+    "mecamh-coping-responses-and-climate-change-worry",
     "mecamh-sleep-quality",
   ],
 
@@ -284,8 +284,8 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-service-utilization-informal-help-seeking",
       "hms-mental-health-service-utilization-help-seeking-intentions",
       "hms-mental-health-service-utilization-knowledge-of-campus-services",
-      "hms-mental-health-service-utilization-use-of-counseling-therapy",
       "hms-mental-health-service-utilization-disability",
+      "hms-mental-health-service-utilization-use-of-counseling-therapy",
       "hms-mental-health-service-utilization-use-of-medication",
       "hms-mental-health-service-utilization-insurance",
       "hms-mental-health-service-utilization-satisfaction-with-counseling-therapy",
@@ -336,9 +336,9 @@ window.STUDY_CONFIG_DESC = {
       "mecamh-climate-anxiety-anticipatory-traumatic-reaction",
       "mecamh-climate-anxiety-anxiety",
     ],
-    "mecamh-coping-responses-and-climate-change": [
-      "mecamh-coping-responses-and-climate-change-coping-responses",
-      "mecamh-coping-responses-and-climate-change-climate-change-worry",
+    "mecamh-coping-responses-and-climate-change-worry": [
+      "mecamh-coping-responses-and-climate-change-worry-coping-responses",
+      "mecamh-coping-responses-and-climate-change-worry-climate-change-worry",
     ],
   },
 
@@ -458,19 +458,19 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-service-utilization-q46",
       "hms-mental-health-service-utilization-q47",
     ],
-    "hms-mental-health-service-utilization-use-of-counseling-therapy": [
-      "hms-mental-health-service-utilization-q22",
-      "hms-mental-health-service-utilization-q23",
-      "hms-mental-health-service-utilization-q24",
-      "hms-mental-health-service-utilization-q25",
-      "hms-mental-health-service-utilization-q26",
-    ],
     "hms-mental-health-service-utilization-disability": [
       "hms-mental-health-service-utilization-q12",
       "hms-mental-health-service-utilization-q13",
       "hms-mental-health-service-utilization-q14",
       "hms-mental-health-service-utilization-q15",
       "hms-mental-health-service-utilization-q16",
+    ],
+    "hms-mental-health-service-utilization-use-of-counseling-therapy": [
+      "hms-mental-health-service-utilization-q22",
+      "hms-mental-health-service-utilization-q23",
+      "hms-mental-health-service-utilization-q24",
+      "hms-mental-health-service-utilization-q25",
+      "hms-mental-health-service-utilization-q26",
     ],
     "hms-mental-health-service-utilization-use-of-medication": [
       "hms-mental-health-service-utilization-q31",
