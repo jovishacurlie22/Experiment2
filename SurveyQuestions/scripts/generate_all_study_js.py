@@ -584,14 +584,13 @@ def find_qid_by_phrase(phrase, qnum_to_row, qnum_to_id):
 # truncated at save time -- the missing text is gone from the tab itself, so
 # it has to be restored here rather than recovered from any file. Keyed by
 # the exact (truncated) sheet name as it appears in the workbook today.
-# Confirmed full titles (per Jovisha):
 #   "Mental Health Service Utilizati"  -> "Mental Health Service Utilization"
 #   "Academic Persistence, Retention"  -> "Academic Persistence, Retention and Competition"
 #   "Coping Responses and Climate Ch"  -> "Coping Responses and Climate Change"
 MODULE_TITLE_OVERRIDES = {
     "Mental Health Service Utilizati": "Mental Health Service Utilization",
     "Academic Persistence, Retention": "Academic Persistence, Retention and Competition",
-    "Coping Responses and Climate Ch": "Coping Responses and Climate Change",
+    "Coping Responses and Climate Ch": "Coping Responses and Climate Change Worry",
 }
 
 
