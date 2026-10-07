@@ -240,6 +240,44 @@
     { value: 9, label: "very, very high mental effort" }
   ];
 
+  // Modules where no PAAS mental-effort rating is collected.
+  const NO_RATING_MODULE_IDS = new Set(["demographics"]);
+
+  function submitResponseRow(ctx, row) {
+    StudyAPI.submitResponse(state.sessionKey, {
+      moduleId: ctx.module.id,
+      sectionId: ctx.section.id,
+      questionId: row.questionId,
+      answerValue: row.answerValue,
+      effortRating: row.effortRating, // null when no rating was collected
+      presentedAt: new Date(row.presentedMs).toISOString(),
+      answeredAt: new Date(row.answeredMs).toISOString(),
+      presentedEpochMs: row.presentedMs,
+      answeredEpochMs: row.answeredMs
+    }).catch((err) => console.error("[app] Failed to submit response:", err));
+  }
+
+  // After a question (or one part of a split matrix) is saved: show the next
+  // part, the next question, or finish.
+  function continueAfterQuestion() {
+    if (state.matrixResume) {
+      goTo("question");
+      return;
+    }
+    const hasNext = StudyEngine.next();
+    if (!hasNext) {
+      finishStudy("completed");
+      return;
+    }
+    const nextCtx = StudyEngine.getContext();
+    if (nextCtx.module.id !== state.currentModuleId) {
+      state.currentModuleId = nextCtx.module.id;
+      goTo("moduleIntro");
+    } else {
+      goTo("question");
+    }
+  }
+
   const state = {
     screen: "consent",
     consentGivenAt: null,
@@ -251,6 +289,8 @@
     answerSubmittedAtMs: {},     // qid -> epoch ms of the click on the question screen's Next button
     questionPresentedAtMs: null, // epoch ms: when the current question screen appeared
     effort: {},    // qid -> paas rating 1-9
+    matrixResume: null,  // next part of a split matrix, set while its PAAS rating is shown
+    pendingRow: null,    // response row waiting for its PAAS rating
     currentModuleId: null, // last module id a module-intro screen was shown for
     questionPresentedAt: null, // ISO timestamp: when the current question screen appeared
     ended: false,
@@ -476,11 +516,21 @@
   /* Progress bar                                                      */
   /* ---------------------------------------------------------------- */
 
+  function setTopbarTitle(moduleTitle) {
+    const el = document.getElementById("brand-title");
+    if (!el) return;
+    el.textContent = moduleTitle || el.dataset.default;
+  }
+
   function renderProgress() {
     const showBar = ["moduleIntro", "question", "rating"].includes(state.screen);
     progressWrap.style.display = showBar ? "block" : "none";
-    if (!showBar) return;
+    if (!showBar) {
+      setTopbarTitle(null); // login, consent, instructions, saving, end -> default title
+      return;
+    }
     const p = StudyEngine.getProgress();
+    setTopbarTitle(p.moduleTitle); // empty string (study complete) also falls back to default
     progressWrap.innerHTML = `
       <div class="progress-track"><div class="progress-fill" style="width:${p.percent}%"></div></div>
       <div class="progress-label">Module ${p.moduleNumber} of ${p.moduleTotal} · ${p.moduleTitle} — Section ${p.sectionNumber} of ${p.sectionTotal} · ${p.sectionTitle}</div>
@@ -519,7 +569,7 @@
         </p>
         <div class="field checkbox-field">
           <input type="checkbox" id="consent-checkbox" />
-          <label for="consent-checkbox">I have read the above and consent to participate.</label>
+          <label for="consent-checkbox">I have read the above statement and consent to participate.</label>
         </div>
         <div class="field-error" id="consent-error">Please check the box to continue.</div>
         <button class="btn btn-primary btn-block" id="btn-consent-continue">Agree and Continue</button>
@@ -613,7 +663,7 @@
   function renderInstructions() {
     root.innerHTML = `
       <div class="card instructions-card">
-        <p class="study-eyebrow">Welcome, ${state.participantId}</p>
+        <p class="study-eyebrow">Welcome!</p>
         <h1 class="study-title">Before you begin</h1>
         <p class="study-lede">
                     You'll work through several short healthcare survey modules (up to ${getMaxQuestionsEstimate()}
@@ -920,6 +970,15 @@
       ? { index: 0, totalPages: pipeInGroups.length } // { start, size } unused/irrelevant in this mode
       : null; // { start, size, index, totalPages }
 
+    // Coming back from the PAAS rating of the previous part: resume at the next part.
+    if (state.matrixResume) {
+      if (q.type === "matrix" && state.matrixResume.questionId === q.id) {
+        const { questionId, ...resumePage } = state.matrixResume;
+        matrixPage = resumePage;
+      }
+      state.matrixResume = null;
+    }
+
     function currentMatrixItems() {
       if (q.type !== "matrix") return null;
       if (pipeInGroups) {
@@ -1072,22 +1131,43 @@
 
       nextBtn.addEventListener("click", () => {
         if (nextBtn.disabled) return; // guard: no answer selected, can't advance
-        if (matrixPage && matrixPage.index < matrixPage.totalPages - 1) {
-          // More row-chunks left in this same question -- advance the
-          // page and re-render, but don't touch the engine cursor or go
-          // to the effort-rating screen yet; that only happens once the
-          // last chunk's rows are answered too.
-          logUI("matrix_page_next", { questionId: q.id, fromPage: matrixPage.index, toPage: matrixPage.index + 1 });
-          matrixPage = { ...matrixPage, index: matrixPage.index + 1, start: matrixPage.start + matrixPage.size };
-          renderCard();
-          bindInputs();
-          requestAnimationFrame(() => fitCardToViewport(".question-card"));
-          return;
+        const answeredMs = Date.now();
+        state.answerSubmittedAtMs[q.id] = answeredMs;
+
+        const totalParts = matrixPage ? matrixPage.totalPages : 1;
+        const partIndex = matrixPage ? matrixPage.index : 0;
+        const isSplit = q.type === "matrix" && totalParts > 1;
+
+        let questionId = q.id;
+        let answerValue;
+        let partLabel = "";
+        if (isSplit) {
+          // Each part is saved as its own row, carrying only that part's rows.
+          const rowIds = currentMatrixItems().map((item) => item.id);
+          const all = state.answers[q.id] || {};
+          const partAnswer = {};
+          rowIds.forEach((id) => { if (id in all) partAnswer[id] = all[id]; });
+          questionId = `${q.id}__p${partIndex + 1}`;
+          answerValue = JSON.stringify(partAnswer);
+          partLabel = `Part ${partIndex + 1} of ${totalParts}`;
+          state.matrixResume = partIndex < totalParts - 1
+            ? { questionId: q.id, ...matrixPage, index: partIndex + 1, start: matrixPage.start + matrixPage.size }
+            : null;
+        } else {
+          const raw = state.answers[q.id];
+          answerValue = typeof raw === "string" ? raw : JSON.stringify(raw);
+          state.matrixResume = null;
         }
-        // The participant's final "Next" on this question: this is the
-        // answer-submitted time. Stamped here, before the rating screen.
-        state.answerSubmittedAtMs[q.id] = Date.now();
-        goTo("rating");
+
+        const row = { questionId, answerValue, partLabel, presentedMs: state.questionPresentedAtMs, answeredMs };
+
+        if (NO_RATING_MODULE_IDS.has(ctx.module.id)) {
+          submitResponseRow(ctx, { ...row, effortRating: null });
+          continueAfterQuestion();
+        } else {
+          state.pendingRow = row; // renderRating() adds the rating, saves, then continues
+          goTo("rating");
+        }
       });
     }
 
@@ -1112,6 +1192,7 @@
   function renderRating() {
     const ctx = StudyEngine.getContext();
     const q = ctx.question;
+    const partLabel = state.pendingRow ? state.pendingRow.partLabel : "";
 
     const optionsHtml = EFFORT_SCALE.map(
       (opt) => `
@@ -1124,8 +1205,8 @@
 
     root.innerHTML = `
       <div class="card rating-card">
-        <p class="question-meta">${ctx.section.title} — Mental effort</p>
-        <p class="question-stem">How much mental effort did you put in for the previous question?</p>
+        <p class="question-meta">${ctx.section.title} — Mental effort ${partLabel ? `<span class="group-badge">${partLabel}</span>` : ""}</p>
+        <p class="question-stem">How much mental effort did you put in for the previous ${partLabel ? "part" : "question"}?</p>
         <div class="paas-scale">
           <div class="choice-list choice-list-ordinal paas-option-list">${optionsHtml}</div>
         </div>
@@ -1145,43 +1226,13 @@
 
     nextBtn.addEventListener("click", () => {
       const selected = document.querySelector('input[name="effort"]:checked');
-      if (!selected) return; // guard: shouldn't fire since button starts disabled
-      state.effort[q.id] = Number(selected.value);
-
-      // Persist the full answer + effort rating for this question, with
-      // both the presented-at and answered-at timestamps, to Django.
-            const rawAnswer = state.answers[q.id];
-      const serializedAnswer = typeof rawAnswer === "string" ? rawAnswer : JSON.stringify(rawAnswer);
-
-      const answeredMs = state.answerSubmittedAtMs[q.id] || state.questionPresentedAtMs;
-
-      StudyAPI.submitResponse(state.sessionKey, {
-        moduleId: ctx.module.id,
-        sectionId: ctx.section.id,
-        questionId: q.id,
-        answerValue: serializedAnswer,
-        effortRating: state.effort[q.id],
-        presentedAt: state.questionPresentedAt,
-        // The moment "Next" was clicked on the question screen -- not the
-        // last answer change, and not anything on this rating screen.
-        answeredAt: new Date(answeredMs).toISOString(),
-        // Exact integer epoch ms, captured at the moment of the events:
-        presentedEpochMs: state.questionPresentedAtMs,
-        answeredEpochMs: answeredMs
-      }).catch((err) => console.error("[app] Failed to submit response:", err));
-
-      const hasNext = StudyEngine.next();
-      if (!hasNext) {
-        finishStudy("completed");
-        return;
-      }
-      const nextCtx = StudyEngine.getContext();
-      if (nextCtx.module.id !== state.currentModuleId) {
-        state.currentModuleId = nextCtx.module.id;
-        goTo("moduleIntro");
-      } else {
-        goTo("question");
-      }
+      if (!selected || !state.pendingRow) return;
+      const effort = Number(selected.value);
+      const row = state.pendingRow;
+      state.pendingRow = null;
+      state.effort[row.questionId] = effort;
+      submitResponseRow(ctx, { ...row, effortRating: effort });
+      continueAfterQuestion();
     });
   }
 
