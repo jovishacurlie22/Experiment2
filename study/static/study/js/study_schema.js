@@ -1063,8 +1063,8 @@ window.STUDY_MODULES = [
         },
         {
           id: "hms-mental-health-status-q29",
-          type: "nominal",
-          stem: "We know that there are many experiences in the online space, ranging from positive to neutral to negative. For this item, we want to know more about your negative online experiences. Please select all the negative experiences you have had in online spaces (such as social media) in the past year.",
+          type: "multi",
+          stem: "We know that there are many experiences in the online space, ranging from positive to neutral to negative. For this item, we want to know more about your negative online experiences. Please select all the negative experiences you have had in online spaces (such as social media) in the past year. (Select all that apply)",
           options: [
             { value: "1", label: "No negative experience", exclusive: true },
             { value: "2", label: "Harassed/Bullied online" },
@@ -1270,12 +1270,12 @@ window.STUDY_MODULES = [
         {
           id: "hms-mental-health-status-q9",
           type: "matrix",
-          stem: "Please answer the following questions as honestly as possible. 1. Do you often feel the desire to eat when you are emotionally upset or stressed?",
+          stem: "Please answer the following questions as honestly as possible.",
           items: [
-            { id: "hms-mental-health-status-q9-i0", label: "2." },
-            { id: "hms-mental-health-status-q9-i1", label: "Do you often feel that you can't control what or how much you eat? 3." },
-            { id: "hms-mental-health-status-q9-i2", label: "Do you sometimes make yourself throw up (vomit) to control your weight? 4." },
-            { id: "hms-mental-health-status-q9-i3", label: "Are you often preoccupied with a desire to be thinner? 5." },
+            { id: "hms-mental-health-status-q9-i0", label: "Do you often feel the desire to eat when you are emotionally upset or stressed?" },
+            { id: "hms-mental-health-status-q9-i1", label: "Do you often feel that you can't control what or how much you eat?" },
+            { id: "hms-mental-health-status-q9-i2", label: "Do you sometimes make yourself throw up (vomit) to control your weight?" },
+            { id: "hms-mental-health-status-q9-i3", label: "Are you often preoccupied with a desire to be thinner?" },
             { id: "hms-mental-health-status-q9-i4", label: "Do you believe yourself to be fat when others say you are thin?" },
           ],
           options: [
