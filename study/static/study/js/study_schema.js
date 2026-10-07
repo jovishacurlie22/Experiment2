@@ -1321,7 +1321,7 @@ window.STUDY_MODULES = [
             { value: "8", label: "Carved words or symbols into skin" },
             { value: "9", label: "Rubbed sharp objects into skin" },
             { value: "10", label: "Punched or banged an object to hurt myself" },
-            { value: "11", label: "Other (please specify)", otherFreeText: true },
+            { value: "11", label: "Others" },
             { value: "12", label: "No, none of these", exclusive: true },
           ],
         },
