@@ -1798,7 +1798,6 @@ window.STUDY_MODULES = [
             { value: "6", label: "Someone other than a friend or family member encouraged me to seek help" },
             { value: "7", label: "A campus advisor mandated me to seek help" },
             { value: "11", label: "A campus advisor referred me to seek help" },
-            { value: "8", label: "I acquired more information about my options from" },
             { value: "10", label: "A health professional recommended or referred me to seek help." },
             { value: "12", label: "Others" },
           ],
