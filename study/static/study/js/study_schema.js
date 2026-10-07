@@ -1579,7 +1579,7 @@ window.STUDY_MODULES = [
               { id: "hms-mental-health-service-utilization-q28-t2", label: "Quality of therapists/counselors" },
               { id: "hms-mental-health-service-utilization-q28-t3", label: "Respect for my privacy concerns" },
               { id: "hms-mental-health-service-utilization-q28-t4", label: "Ability to schedule appointments without long delays" },
-              { id: "hms-mental-health-service-utilization-q28-t5", label: "Respect and consideration for my identities (e.g., race/ethnicity, gender, etc.)" },
+              { id: "hms-mental-health-service-utilization-q28-t5", label: "Respect and consideration for my beliefs (e.g., faith, gender, etc.)" },
             ],
             hideForDigitalWhen: { matrixQuestionId: "hms-mental-health-service-utilization-q26", in: ["2"] },
           },
