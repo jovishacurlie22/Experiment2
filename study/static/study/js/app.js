@@ -522,6 +522,54 @@
     el.textContent = moduleTitle || el.dataset.default;
   }
 
+  /* ---------------------------------------------------------------- */
+  /* Page numbers (for OCR of screen recordings)                       */
+  /* ---------------------------------------------------------------- */
+
+  // Every possible page gets a fixed number from the CANONICAL schema order
+  // (STUDY_MODULES array order / mod.sections / sec.questions -- NOT the
+  // counterbalanced run order), so a given question or module intro always
+  // shows the same "Page: NNN" for every participant and in both ASC/DESC
+  // conditions. Follow-ups are ordinary questions, so they simply own their
+  // number and are only seen if the participant's answers reach them.
+  // Built lazily because STUDY_MODULES may not exist yet at script load.
+  // NOTE: adding/removing questions in the schema renumbers everything after
+  // them -- keep a copy of getPageIndex() output per study version.
+  let pageIndexCache = null;
+  function getPageIndex() {
+    if (pageIndexCache) return pageIndexCache;
+    const idx = { module: {}, question: {} };
+    let n = 0;
+    (window.STUDY_MODULES || []).forEach((mod) => {
+      n += 1;
+      idx.module[mod.id] = n; // the module-intro screen
+      mod.sections.forEach((sec) => sec.questions.forEach((q) => { n += 1; idx.question[q.id] = n; }));
+    });
+    pageIndexCache = idx;
+    return idx;
+  }
+  window.getPageIndex = getPageIndex; // console: copy(JSON.stringify(getPageIndex()))
+
+  // Base page number for whatever the cursor is on, or null.
+  function currentPageNo() {
+    const ctx = StudyEngine.getContext();
+    if (state.screen === "moduleIntro") return ctx.module ? getPageIndex().module[ctx.module.id] : null;
+    return ctx.question ? getPageIndex().question[ctx.question.id] : null;
+  }
+
+  // suffix: "" for a normal page, "2" for part 2 of a split matrix,
+  // "R" for the PAAS rating screen that follows a question/part.
+  function pageLabelText(suffix) {
+    const n = currentPageNo();
+    if (!n) return "";
+    return `Page: ${String(n).padStart(3, "0")}${suffix ? "." + suffix : ""}`;
+  }
+
+  function setPageLabel(suffix) {
+    const el = document.getElementById("page-label");
+    if (el) el.textContent = pageLabelText(suffix);
+  }
+
   function renderProgress() {
     const showBar = ["moduleIntro", "question", "rating"].includes(state.screen);
     progressWrap.style.display = showBar ? "block" : "none";
@@ -534,6 +582,7 @@
     progressWrap.innerHTML = `
       <div class="progress-track"><div class="progress-fill" style="width:${p.percent}%"></div></div>
       <div class="progress-label">Module ${p.moduleNumber} of ${p.moduleTotal} · ${p.moduleTitle} — Section ${p.sectionNumber} of ${p.sectionTotal} · ${p.sectionTitle}</div>
+      <div class="progress-label" id="page-label">${pageLabelText(state.screen === "rating" ? "R" : "")}</div>
     `;
   }
 
@@ -1032,6 +1081,7 @@
           </div>
         </div>
       `;
+      setPageLabel(matrixPage && matrixPage.totalPages > 1 ? String(matrixPage.index + 1) : "");
     }
 
     function bindInputs() {
@@ -1291,7 +1341,7 @@
       StudyAPI.logEvent(state.sessionKey, "screen_shown", {
         screenName: screen,
         detail: ctx
-          ? { moduleId: ctx.module && ctx.module.id, sectionId: ctx.section && ctx.section.id, questionId: ctx.question && ctx.question.id }
+          ? { moduleId: ctx.module && ctx.module.id, sectionId: ctx.section && ctx.section.id, questionId: ctx.question && ctx.question.id, pageNo: pageLabelText(screen === "rating" ? "R" : "") }
           : {}
       });
     }

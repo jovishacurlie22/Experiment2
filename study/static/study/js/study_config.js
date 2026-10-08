@@ -68,7 +68,6 @@ window.STUDY_CONFIG_ASC = {
       "hms-mental-health-status-suicide-contagion",
       "hms-mental-health-status-positive-mental-health",
       "hms-mental-health-status-suicidality",
-      "hms-mental-health-status-sde",
       "hms-mental-health-status-academic-impairment",
       "hms-mental-health-status-non-suicidal-self-injury",
       "hms-mental-health-status-depression-phq-9",
@@ -142,6 +141,10 @@ window.STUDY_CONFIG_ASC = {
     "hms-academic-persistence-retention-and-competition-perceived-competition": [
       "hms-academic-persistence-retention-and-competition-q2",
       "hms-academic-persistence-retention-and-competition-q3",
+    ],
+    "hms-mental-health-status-eating-and-body-image": [
+      "hms-mental-health-status-q8",
+      "hms-mental-health-status-q9",
     ],
     "hms-mental-health-status-substance-use": [
       "hms-mental-health-status-q15",
@@ -295,7 +298,6 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-status-depression-phq-9",
       "hms-mental-health-status-non-suicidal-self-injury",
       "hms-mental-health-status-academic-impairment",
-      "hms-mental-health-status-sde",
       "hms-mental-health-status-suicidality",
       "hms-mental-health-status-positive-mental-health",
       "hms-mental-health-status-suicide-contagion",
@@ -429,6 +431,10 @@ window.STUDY_CONFIG_DESC = {
       "hms-mental-health-status-q18",
       "hms-mental-health-status-q15",
       "hms-mental-health-status-q16",
+    ],
+    "hms-mental-health-status-eating-and-body-image": [
+      "hms-mental-health-status-q9",
+      "hms-mental-health-status-q8",
     ],
     "hms-mental-health-service-utilization-perceived-need": [
       "hms-mental-health-service-utilization-q19",

@@ -904,6 +904,22 @@ window.STUDY_MODULES = [
             { value: "0", label: "No" },
           ],
         },
+        {
+          id: "hms-mental-health-status-q9",
+          type: "matrix",
+          stem: "Please answer the following questions as honestly as possible.",
+          items: [
+            { id: "hms-mental-health-status-q9-i0", label: "Do you often feel the desire to eat when you are emotionally upset or stressed?" },
+            { id: "hms-mental-health-status-q9-i1", label: "Do you often feel that you can't control what or how much you eat?" },
+            { id: "hms-mental-health-status-q9-i2", label: "Do you sometimes make yourself throw up (vomit) to control your weight?" },
+            { id: "hms-mental-health-status-q9-i3", label: "Are you often preoccupied with a desire to be thinner?" },
+            { id: "hms-mental-health-status-q9-i4", label: "Do you believe yourself to be fat when others say you are thin?" },
+          ],
+          options: [
+            { value: "1", label: "Yes" },
+            { value: "0", label: "No" },
+          ],
+        },
         ]
       },
       {
@@ -1259,28 +1275,6 @@ window.STUDY_MODULES = [
           options: [
             { value: "1", label: "Yes" },
             { value: "2", label: "No" },
-          ],
-        },
-        ]
-      },
-      {
-        id: "hms-mental-health-status-sde",
-        title: "SDE",
-        questions: [
-        {
-          id: "hms-mental-health-status-q9",
-          type: "matrix",
-          stem: "Please answer the following questions as honestly as possible.",
-          items: [
-            { id: "hms-mental-health-status-q9-i0", label: "Do you often feel the desire to eat when you are emotionally upset or stressed?" },
-            { id: "hms-mental-health-status-q9-i1", label: "Do you often feel that you can't control what or how much you eat?" },
-            { id: "hms-mental-health-status-q9-i2", label: "Do you sometimes make yourself throw up (vomit) to control your weight?" },
-            { id: "hms-mental-health-status-q9-i3", label: "Are you often preoccupied with a desire to be thinner?" },
-            { id: "hms-mental-health-status-q9-i4", label: "Do you believe yourself to be fat when others say you are thin?" },
-          ],
-          options: [
-            { value: "1", label: "Yes" },
-            { value: "0", label: "No" },
           ],
         },
         ]
