@@ -559,15 +559,33 @@
 
   // suffix: "" for a normal page, "2" for part 2 of a split matrix,
   // "R" for the PAAS rating screen that follows a question/part.
-  function pageLabelText(suffix) {
+  // Format: NNN[.PP][.R]
+  //   NNN = fixed canonical page number (see getPageIndex)
+  //   PP  = fixed part id for split matrices: "03" = the 3rd option of the
+  //         SOURCE question (same for every participant), or "r05" = the
+  //         matrix starting at its 5th row (viewport-split matrices).
+  //   R   = the PAAS rating screen that follows that question/part.
+  let lastPartKey = ""; // part id of the question screen most recently rendered
+
+  // How visible the label is on the PAAS rating screens. 0.1 = barely
+  // perceptible to a person; raise it if OCR misses it after video
+  // compression, lower it to make it fainter. Test on a real recording.
+  const PAAS_LABEL_OPACITY = 0.1;
+
+  function pageLabelText(isRating) {
     const n = currentPageNo();
     if (!n) return "";
-    return `Page: ${String(n).padStart(3, "0")}${suffix ? "." + suffix : ""}`;
+    const segs = [String(n).padStart(3, "0")];
+    if (state.screen !== "moduleIntro" && lastPartKey) segs.push(lastPartKey);
+    if (isRating) segs.push("R");
+    return `Page: ${segs.join(".")}`;
   }
 
-  function setPageLabel(suffix) {
+  function setPageLabel(isRating) {
     const el = document.getElementById("page-label");
-    if (el) el.textContent = pageLabelText(suffix);
+    if (!el) return;
+    el.textContent = pageLabelText(isRating);
+    el.style.opacity = isRating ? String(PAAS_LABEL_OPACITY) : "";
   }
 
   function renderProgress() {
@@ -582,8 +600,9 @@
     progressWrap.innerHTML = `
       <div class="progress-track"><div class="progress-fill" style="width:${p.percent}%"></div></div>
       <div class="progress-label">Module ${p.moduleNumber} of ${p.moduleTotal} · ${p.moduleTitle} — Section ${p.sectionNumber} of ${p.sectionTotal} · ${p.sectionTitle}</div>
-      <div class="progress-label" id="page-label">${pageLabelText(state.screen === "rating" ? "R" : "")}</div>
+      <div class="progress-label" id="page-label"></div>
     `;
+    setPageLabel(state.screen === "rating");
   }
 
   /* ---------------------------------------------------------------- */
@@ -607,23 +626,22 @@
         <p class="study-eyebrow">Step 2 of 2</p>
         <h1 class="study-title">Disclaimer and Consent</h1>
         <p class="study-lede">
-          During this study, your webcam feed and screen activity may be recorded while you complete the experiment tasks. Any recordings collected will be used solely for research and study analysis.
+          During this study, your webcam feed and screen activity may be recorded for research
+          purposes while you complete the experiment tasks. Recorded clips are used only for
+          study analysis.
         </p>
         <p class="study-lede">
-Your participation is entirely voluntary. You may choose not to participate or may stop at any time before beginning the experiment, without any consequences.
+          Participation is voluntary. You may stop at any point before beginning the experiment.
+          By continuing below, you confirm that you understand the recording setup and consent
+          to participate in the study.
         </p>
-<p class="study-lede">
-By continuing, you confirm that you have read and understood the above information, are aware of the recording setup, and consent to participate in the study.
-        </p>
-
         <div class="field checkbox-field">
           <input type="checkbox" id="consent-checkbox" />
-          <label for="consent-checkbox">I have read and understood the above information and consent to participate in this study. </label>
+          <label for="consent-checkbox">I have read the above statement and consent to participate.</label>
         </div>
-        <div class="field-error" id="consent-error">Please check the box above to continue.</div>
+        <div class="field-error" id="consent-error">Please check the box to continue.</div>
         <button class="btn btn-primary btn-block" id="btn-consent-continue">Agree and Continue</button>
       </div>
-
     `;
     document.getElementById("btn-consent-continue").addEventListener("click", () => {
       const checked = document.getElementById("consent-checkbox").checked;
@@ -713,20 +731,24 @@ By continuing, you confirm that you have read and understood the above informati
   function renderInstructions() {
     root.innerHTML = `
       <div class="card instructions-card">
-        <p class="study-eyebrow">Welcome !</p>
+        <p class="study-eyebrow">Welcome!</p>
         <h1 class="study-title">Before you begin</h1>
         <p class="study-lede">
-                    You will complete several short healthcare survey modules, with up to  ${getMaxQuestionsEstimate()} questions in total. Some questions may be skipped automatically based on your earlier responses.
-          After each question, you will be asked to rate the amount of mental effort you experienced while answering it. The study must be completed in fullscreen and takes about 30 minutes. Your webcam and screen are being recorded for this session, and once you begin you won't be able to go back to a previous question.
+                    You'll work through several short healthcare survey modules (up to ${getMaxQuestionsEstimate()}
+          questions in total — some are skipped automatically based on your earlier answers).
+          After each question, you'll rate how much mental effort it took to answer. The study
+          must be completed in fullscreen and takes about 30 minutes. Your webcam and screen are
+          being recorded for this session, and once you begin you won't be able to go back to a
+          previous question.
         </p>
         <p class="study-lede">
-          You may end the study at any time by clicking the <b>End Study</b> button at the top of the page. This will stop and save the recordings before your session is closed. 
+          You can end the study at any time using the <strong>End Study</strong> button at the top of
+          the page — this will stop and save the recording before closing your session.
         </p>
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-start">Start Study</button>
         </div>
       </div>
-    </div>
     `;
       document.getElementById("btn-start").addEventListener("click", () => {
       // study_engine.js reads section/question order overrides straight off
@@ -1055,6 +1077,28 @@ By continuing, you confirm that you have read and understood the above informati
       return q.stem;
     }
 
+    // Part id that means the same thing for every participant (unlike the
+    // "Part x of y" badge, which is just display order and so differs when
+    // earlier answers or the window size change how many parts there are).
+    function stablePartKey() {
+      if (q.type !== "matrix" || !matrixPage) return "";
+      const pad = (n) => String(n).padStart(2, "0");
+      const optionNo = (value) => {
+        const src = q.pipeInItems && getQuestionsById().get(q.pipeInItems.fromQuestionId);
+        const i = src ? (src.options || []).findIndex((o) => String(o.value) === String(value)) : -1;
+        return i + 1; // 1-based position in the source question's fixed option list
+      };
+      if (pipeInGroups) {
+        const group = pipeInGroups[matrixPage.index];
+        return group ? pad(optionNo(group.value)) : "";
+      }
+      if (matrixPage.totalPages <= 1) return "";
+      const first = (currentMatrixItems() || [])[0];
+      if (!first) return "";
+      if (q.pipeInItems) return "r" + pad(optionNo(first.id.slice(`${q.id}-pipe-`.length)));
+      return "r" + pad((q.items || []).findIndex((it) => it.id === first.id) + 1);
+    }
+
     function renderCard() {
       let optionsMarkup;
       if (q.type === "ordinal") optionsMarkup = renderOrdinalScale(q);
@@ -1080,7 +1124,8 @@ By continuing, you confirm that you have read and understood the above informati
           </div>
         </div>
       `;
-      setPageLabel(matrixPage && matrixPage.totalPages > 1 ? String(matrixPage.index + 1) : "");
+      lastPartKey = stablePartKey();
+      setPageLabel(false);
     }
 
     function bindInputs() {
@@ -1321,6 +1366,7 @@ By continuing, you confirm that you have read and understood the above informati
 
   function goTo(screen) {
     state.screen = screen;
+    if (screen !== "rating") lastPartKey = ""; // rating keeps the part id of the question just answered
     renderChrome();
     if (screen === "consent") renderConsent();
     else if (screen === "login") renderLogin();
@@ -1340,7 +1386,7 @@ By continuing, you confirm that you have read and understood the above informati
       StudyAPI.logEvent(state.sessionKey, "screen_shown", {
         screenName: screen,
         detail: ctx
-          ? { moduleId: ctx.module && ctx.module.id, sectionId: ctx.section && ctx.section.id, questionId: ctx.question && ctx.question.id, pageNo: pageLabelText(screen === "rating" ? "R" : "") }
+          ? { moduleId: ctx.module && ctx.module.id, sectionId: ctx.section && ctx.section.id, questionId: ctx.question && ctx.question.id, pageNo: pageLabelText(screen === "rating") }
           : {}
       });
     }
