@@ -926,12 +926,14 @@
     if (!card || !container) return;
     card.style.transform = "";
     card.style.transformOrigin = "top center";
-    let scale = 1;
-    for (let i = 0; i < 20; i++) {
-      if (card.scrollHeight <= container.clientHeight || scale <= 0.55) break;
-      scale -= 0.05;
-      card.style.transform = `scale(${scale})`;
-    }
+    // scrollHeight is layout height and is NOT affected by CSS transforms,
+    // so re-checking it inside a loop never sees progress and always bottoms
+    // out at the minimum scale. Measure once and compute the exact scale.
+    const needed = card.scrollHeight;
+    const available = container.clientHeight;
+    if (needed <= available) return;
+    const scale = Math.max(0.55, Math.floor((available / needed) * 100) / 100);
+    card.style.transform = `scale(${scale})`;
   }
 
   // How many matrix rows actually fit is content-dependent (row-label

@@ -1186,7 +1186,7 @@ window.STUDY_MODULES = [
             { value: "5", label: "Word of mouth from my peers" },
             { value: "6", label: "Others" },
             { value: "7", label: "I don’t remember", exclusive: true },
-            { value: "8", label: "None of these" },
+            { value: "8", label: "None of these", exclusive: true },
           ],
           showIf: { questionId: "hms-mental-health-status-q22", in: ["1", "3"] },
           group: "hms-mental-health-status-q22",
