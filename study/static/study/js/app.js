@@ -626,22 +626,23 @@
         <p class="study-eyebrow">Step 2 of 2</p>
         <h1 class="study-title">Disclaimer and Consent</h1>
         <p class="study-lede">
-          During this study, your webcam feed and screen activity may be recorded for research
-          purposes while you complete the experiment tasks. Recorded clips are used only for
-          study analysis.
+          During this study, your webcam feed and screen activity may be recorded while you complete the experiment tasks. Any recordings collected will be used solely for research and study analysis.
         </p>
         <p class="study-lede">
-          Participation is voluntary. You may stop at any point before beginning the experiment.
-          By continuing below, you confirm that you understand the recording setup and consent
-          to participate in the study.
+Your participation is entirely voluntary. You may choose not to participate or may stop at any time before beginning the experiment, without any consequences.
         </p>
+<p class="study-lede">
+By continuing, you confirm that you have read and understood the above information, are aware of the recording setup, and consent to participate in the study.
+        </p>
+
         <div class="field checkbox-field">
           <input type="checkbox" id="consent-checkbox" />
-          <label for="consent-checkbox">I have read the above statement and consent to participate.</label>
+          <label for="consent-checkbox">I have read and understood the above information and consent to participate in this study. </label>
         </div>
-        <div class="field-error" id="consent-error">Please check the box to continue.</div>
+        <div class="field-error" id="consent-error">Please check the box above to continue.</div>
         <button class="btn btn-primary btn-block" id="btn-consent-continue">Agree and Continue</button>
       </div>
+
     `;
     document.getElementById("btn-consent-continue").addEventListener("click", () => {
       const checked = document.getElementById("consent-checkbox").checked;
@@ -731,24 +732,20 @@
   function renderInstructions() {
     root.innerHTML = `
       <div class="card instructions-card">
-        <p class="study-eyebrow">Welcome!</p>
+        <p class="study-eyebrow">Welcome !</p>
         <h1 class="study-title">Before you begin</h1>
         <p class="study-lede">
-                    You'll work through several short healthcare survey modules (up to ${getMaxQuestionsEstimate()}
-          questions in total — some are skipped automatically based on your earlier answers).
-          After each question, you'll rate how much mental effort it took to answer. The study
-          must be completed in fullscreen and takes about 30 minutes. Your webcam and screen are
-          being recorded for this session, and once you begin you won't be able to go back to a
-          previous question.
+                    You will complete several short healthcare survey modules, with up to  ${getMaxQuestionsEstimate()} questions in total. Some questions may be skipped automatically based on your earlier responses.
+          After each question, you will be asked to rate the amount of mental effort you experienced while answering it. The study must be completed in fullscreen and takes about 30 minutes. Your webcam and screen are being recorded for this session, and once you begin you won't be able to go back to a previous question.
         </p>
         <p class="study-lede">
-          You can end the study at any time using the <strong>End Study</strong> button at the top of
-          the page — this will stop and save the recording before closing your session.
+          You may end the study at any time by clicking the <b>End Study</b> button at the top of the page. This will stop and save the recordings before your session is closed. 
         </p>
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-start">Start Study</button>
         </div>
       </div>
+
     `;
       document.getElementById("btn-start").addEventListener("click", () => {
       // study_engine.js reads section/question order overrides straight off
